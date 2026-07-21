@@ -53,7 +53,7 @@ function scoreChunk(normText, words) {
   return score;
 }
 
-function getTopChunks(query, k = 10) {
+function getTopChunks(query, k = 5) {
   const words = tokenize(query);
   if (words.length === 0) return [];
   const scored = KB_CHUNKS.map((c, i) => ({
@@ -113,8 +113,12 @@ exports.handler = async function (event) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-  const topChunks = getTopChunks(lastUserMessage ? lastUserMessage.content : "", 10);
+  const topChunks = getTopChunks(lastUserMessage ? lastUserMessage.content : "", 5);
   const systemPrompt = buildSystemPrompt(topChunks);
+
+  // Solo mandamos los ultimos 4 mensajes (2 idas y vueltas): suficiente para
+  // sostener una pregunta de seguimiento simple, sin pagar por charlas largas.
+  const trimmedMessages = messages.slice(-4);
 
   try {
     const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -125,10 +129,10 @@ exports.handler = async function (event) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 400,
         system: systemPrompt,
-        messages,
+        messages: trimmedMessages,
       }),
     });
 
