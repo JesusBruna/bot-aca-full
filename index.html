@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Asistente Tiendas Full · ACA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --brand: #c0392b;
+    --brand-hover: #a5321f;
+    --brand-soft: #fdecea;
+    --ink-900: #17181c;
+    --ink-700: #3f4147;
+    --ink-500: #6b6d76;
+    --ink-300: #b4b6c0;
+    --surface-0: #ffffff;
+    --surface-1: #f8f8f9;
+    --surface-2: #f0f1f3;
+    --border: #e6e6ea;
+    --success: #1f9d55;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-full: 999px;
+
+    --shadow-sm: 0 1px 2px rgba(15, 15, 20, 0.05);
+    --shadow-md: 0 6px 20px -4px rgba(15, 15, 20, 0.12), 0 2px 6px rgba(15, 15, 20, 0.06);
+    --shadow-lg: 0 30px 60px -15px rgba(20, 22, 30, 0.28), 0 10px 24px -8px rgba(20, 22, 30, 0.16), 0 0 0 1px rgba(255,255,255,0.4);
+
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--ink-900);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+    padding: 20px 14px 14px;
+    background-color: #d7dae0;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(192, 57, 43, 0.10) 0%, rgba(192, 57, 43, 0) 42%),
+      radial-gradient(circle at 88% 14%, rgba(47, 111, 237, 0.12) 0%, rgba(47, 111, 237, 0) 40%),
+      radial-gradient(circle at 50% 100%, rgba(120, 130, 160, 0.14) 0%, rgba(120, 130, 160, 0) 55%),
+      linear-gradient(160deg, #eef0f4 0%, #dadde3 45%, #c8cbd3 100%),
+      linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+    background-size: auto, auto, auto, auto, 42px 42px, 42px 42px;
+    background-attachment: fixed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ============ ENCABEZADO DE PAGINA (siempre visible) ============ */
+  #page-header {
+    max-width: 1180px; margin: 0 auto 14px; display: flex; align-items: center; gap: 10px;
+    padding: 0 4px;
+  }
+  #page-header .mark {
+    width: 32px; height: 32px; border-radius: var(--radius-sm); flex-shrink: 0;
+    background: linear-gradient(155deg, var(--brand) 0%, #922 100%);
+    color: white; display: flex; align-items: center; justify-content: center;
+  }
+  #page-header .mark svg { width: 17px; height: 17px; }
+  #page-header .titles { color: white; }
+  #page-header .titles .t1 { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+  #page-header .titles .t2 { font-size: 11.5px; color: #9a9ca3; display: flex; align-items: center; gap: 4px; }
+
+  /* ============ LAYOUT: 1 columna (mobile) / 3 columnas (desktop) ============ */
+  #layout {
+    max-width: 1180px; margin: 0 auto;
+    display: block;
+  }
+
+  /* ============ PANELES (Foro / Chat / Manuales) ============ */
+  .panel {
+    position: relative;
+    width: 100%; max-width: 440px; margin: 0 auto;
+    height: 88dvh; max-height: 760px;
+    background: var(--surface-0);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    border: 1px solid var(--border);
+  }
+  .panel.active { display: flex; }
+
+  .panel-header {
+    padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .panel-header .eyebrow {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-500); margin: 0 0 2px;
+  }
+  .panel-header h2 { font-size: 14.5px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+  .panel-header .sub { font-size: 12px; color: var(--ink-500); margin-top: 1px; }
+
+  .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  @media (max-width: 480px) {
+    .panel { max-width: 100%; height: calc(100dvh - 110px); max-height: none; border-radius: var(--radius-lg); }
+  }
+
+  /* ============ DESKTOP / TABLET ANCHO: 3 columnas simultaneas ============ */
+  @media (min-width: 1000px) {
+    #tabs { display: none; }
+    #layout {
+      display: grid; grid-template-columns: 300px 460px 300px;
+      gap: 20px; justify-content: center; align-items: start;
+    }
+    .panel { display: flex !important; max-width: none; margin: 0; height: 82vh; max-height: 800px; }
+  }
+  }
+
+  #header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  #logo-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(155deg, var(--brand) 0%, #922 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+  }
+  #logo-mark svg { width: 20px; height: 20px; }
+  #header-text { flex: 1; min-width: 0; }
+  #header-text .title { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; }
+  #header-text .subtitle { font-size: 12px; color: var(--ink-500); margin-top: 1px; display: flex; align-items: center; }
+  #status-dot, #status-dot-chat {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+    display: inline-block; margin-right: 5px; box-shadow: 0 0 0 3px rgba(31,157,85,0.15);
+  }
+
+  #tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    margin: 0 auto 12px;
+    max-width: 440px;
+    background: var(--surface-1);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-full);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-500);
+    cursor: pointer;
+    transition: background 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .tab-btn svg { width: 15px; height: 15px; }
+  .tab-btn:hover { color: var(--ink-900); }
+  .tab-btn.active { background: var(--surface-0); color: var(--brand); box-shadow: var(--shadow-sm); }
+
+  .view { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .view.active { display: flex; }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px;
+    scroll-behavior: smooth;
+  }
+  #messages::-webkit-scrollbar { width: 6px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--ink-300); border-radius: 999px; }
+
+  .row { display: flex; margin-bottom: 12px; animation: rise 0.28s var(--ease); }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble {
+    max-width: 82%;
+    padding: 11px 15px;
+    border-radius: var(--radius-md);
+    font-size: 14.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .bubble.bot {
+    background: var(--surface-1);
+    color: var(--ink-900);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.user {
+    background: var(--ink-900);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+  }
+
+  .typing-row { display: flex; margin-bottom: 12px; }
+  .typing-bubble {
+    background: var(--surface-1);
+    border-radius: var(--radius-md);
+    border-bottom-left-radius: 4px;
+    padding: 13px 16px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .typing-bubble span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--ink-300);
+    animation: bounce 1.1s infinite ease-in-out;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  .actions { display: flex; gap: 8px; margin-bottom: 14px; margin-left: 2px; flex-wrap: wrap; animation: rise 0.28s var(--ease); }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    padding: 8px 15px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-900);
+    cursor: pointer;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease), transform 0.1s var(--ease);
+  }
+  .chip svg { width: 14px; height: 14px; }
+  .chip:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+  .chip:active { transform: scale(0.97); }
+  .chip.primary { background: var(--ink-900); color: white; border-color: var(--ink-900); }
+  .chip.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: white; }
+
+  .card {
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+    animation: rise 0.28s var(--ease);
+  }
+  .field {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-family: var(--font);
+    font-size: 14px;
+    margin-bottom: 8px;
+    transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+    outline: none;
+  }
+  .field:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .btn-full {
+    width: 100%;
+    border: none;
+    background: var(--brand);
+    color: white;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background 0.18s var(--ease);
+  }
+  .btn-full:hover { background: var(--brand-hover); }
+  .btn-full svg { width: 15px; height: 15px; }
+
+  #inputbar {
+    border-top: 1px solid var(--border);
+    background: var(--surface-0);
+    padding: 12px 14px;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  #input {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    border-radius: var(--radius-full);
+    padding: 11px 18px;
+    font-family: var(--font);
+    font-size: 14.5px;
+    outline: none;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  #input:focus { border-color: var(--brand); background: var(--surface-0); }
+  #input:disabled { opacity: 0.5; }
+  #send {
+    width: 42px; height: 42px;
+    border: none;
+    background: var(--brand);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  #send svg { width: 18px; height: 18px; }
+  #send:hover:not(:disabled) { background: var(--brand-hover); }
+  #send:active:not(:disabled) { transform: scale(0.94); }
+  #send:disabled { opacity: 0.4; cursor: default; }
+
+  #manuales-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .manuales-intro { padding: 2px 2px 16px; }
+  .manuales-intro h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .manuales-intro p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
+
+  .doc-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 13px 14px;
+    margin-bottom: 10px;
+    transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  .doc-card:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+  .doc-icon {
+    width: 42px; height: 42px;
+    border-radius: var(--radius-sm);
+    background: var(--brand-soft);
+    color: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .doc-icon svg { width: 20px; height: 20px; }
+  .doc-info { flex: 1; min-width: 0; }
+  .doc-info .doc-title { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .doc-info .doc-meta { font-size: 12px; color: var(--ink-500); }
+  .doc-download {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-700);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+  }
+  .doc-download svg { width: 16px; height: 16px; }
+  .doc-download:hover { background: var(--brand); border-color: var(--brand); color: white; }
+
+  .skeleton-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 14px; margin-bottom: 10px;
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+  }
+  .skeleton-box {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-1) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
+  .skeleton-icon { width: 42px; height: 42px; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .skeleton-lines { flex: 1; }
+  .skeleton-line { height: 10px; border-radius: 4px; margin-bottom: 6px; }
+  .skeleton-line.w60 { width: 60%; }
+  .skeleton-line.w35 { width: 35%; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-500);
+  }
+  .empty-state svg { width: 32px; height: 32px; margin-bottom: 10px; opacity: 0.5; }
+  .empty-state p { font-size: 13px; margin: 0; }
+
+  /* ======================================================
+     FORO DE IDEAS Y BUENAS PRACTICAS
+     Seccion nueva. Reutiliza los mismos tokens (--brand,
+     --surface-*, --ink-*, --radius-*, --shadow-*) definidos
+     arriba para mantener consistencia visual con el resto
+     de la app.
+     ====================================================== */
+
+  :root {
+    --status-nueva: #d97a06;
+    --status-nueva-bg: #fdf1e0;
+    --status-eval: #2f6fed;
+    --status-eval-bg: #eaf0fe;
+    --status-impl: #1f9d55;
+    --status-impl-bg: #e7f7ee;
+    --status-cerrada: #7a7d85;
+    --status-cerrada-bg: #f0f1f3;
+  }
+
+  /* ---------- Layout general del foro ---------- */
+  #forum-list-view, #forum-detail-view { flex: 1; overflow-y: auto; padding: 16px; display: none; }
+  #forum-list-view.active, #forum-detail-view.active { display: block; }
+
+  .forum-header { padding: 2px 2px 14px; }
+  .forum-header h2 {
+    font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .forum-header p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
+
+  .forum-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    padding: 9px 14px;
+    margin: 14px 0 12px;
+    transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .forum-search:focus-within { border-color: var(--brand); background: var(--surface-0); }
+  .forum-search svg { width: 16px; height: 16px; color: var(--ink-500); flex-shrink: 0; }
+  .forum-search input {
+    border: none; background: transparent; outline: none;
+    font-family: var(--font); font-size: 14px; flex: 1; color: var(--ink-900);
+  }
+
+  .forum-new-btn {
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    background: var(--brand); color: white; border: none;
+    font-family: var(--font); font-weight: 700; font-size: 13.5px;
+    padding: 11px; border-radius: var(--radius-sm);
+    cursor: pointer; margin-bottom: 14px;
+    transition: background 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  .forum-new-btn svg { width: 15px; height: 15px; }
+  .forum-new-btn:hover { background: var(--brand-hover); }
+  .forum-new-btn:active { transform: scale(0.98); }
+
+  /* ---------- Chips de orden y categoria ---------- */
+  .forum-chiprow { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+  .forum-chiprow::-webkit-scrollbar { display: none; }
+  .forum-sort-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+    background: var(--surface-1); border: 1px solid transparent;
+    border-radius: var(--radius-full); padding: 7px 13px;
+    font-family: var(--font); font-size: 12.5px; font-weight: 600;
+    color: var(--ink-500); cursor: pointer; flex-shrink: 0;
+    transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+  }
+  .forum-sort-chip svg { width: 13px; height: 13px; }
+  .forum-sort-chip:hover { color: var(--ink-900); }
+  .forum-sort-chip.active { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+
+  .forum-cat-select {
+    width: 100%;
+    font-family: var(--font); font-size: 13px; font-weight: 600;
+    color: var(--ink-900); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 9px 12px; margin-bottom: 14px; outline: none; cursor: pointer;
+    transition: border-color 0.18s var(--ease);
+  }
+  .forum-cat-select:focus { border-color: var(--brand); }
+
+  /* ---------- Tarjeta de publicacion ---------- */
+  .post-card {
+    background: var(--surface-0); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px;
+    cursor: pointer; animation: rise 0.28s var(--ease);
+    transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  .post-card:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+
+  .post-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .post-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-full);
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .post-status.st-nueva { color: var(--status-nueva); background: var(--status-nueva-bg); }
+  .post-status.st-evaluacion { color: var(--status-eval); background: var(--status-eval-bg); }
+  .post-status.st-implementada { color: var(--status-impl); background: var(--status-impl-bg); }
+  .post-status.st-cerrada { color: var(--status-cerrada); background: var(--status-cerrada-bg); }
+  .post-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .post-category { font-size: 11px; font-weight: 600; color: var(--ink-500); }
+
+  .post-card-title { font-size: 14.5px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .post-card-desc {
+    font-size: 13px; color: var(--ink-700); line-height: 1.5; margin: 0 0 10px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .post-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .post-author-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .post-meta { display: flex; align-items: center; gap: 12px; color: var(--ink-500); font-size: 12px; flex-shrink: 0; }
+  .post-meta span { display: inline-flex; align-items: center; gap: 3px; }
+  .post-meta svg { width: 13px; height: 13px; }
+
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .avatar.lg { width: 38px; height: 38px; font-size: 14px; }
+
+  .author-name {
+    font-size: 12.5px; font-weight: 600; color: var(--ink-700);
+    background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font);
+    text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .author-name:hover { color: var(--brand); text-decoration: underline; }
+  .post-date { font-size: 11.5px; color: var(--ink-300); flex-shrink: 0; }
+
+  /* ---------- Vista de detalle ---------- */
+  .detail-back {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: none; font-family: var(--font);
+    font-size: 13px; font-weight: 600; color: var(--ink-500);
+    cursor: pointer; padding: 4px 0; margin-bottom: 12px;
+  }
+  .detail-back svg { width: 15px; height: 15px; }
+  .detail-back:hover { color: var(--brand); }
+
+  .detail-card {
+    background: var(--surface-0); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;
+  }
+  .detail-title { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; margin: 10px 0 12px; }
+  .detail-desc { font-size: 14px; line-height: 1.6; color: var(--ink-700); white-space: pre-wrap; margin: 0 0 14px; }
+  .detail-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+  .icon-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: var(--radius-full); padding: 7px 13px;
+    font-family: var(--font); font-size: 12.5px; font-weight: 600; color: var(--ink-700);
+    cursor: pointer; transition: all 0.18s var(--ease);
+  }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .icon-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+  .icon-btn.liked { color: var(--brand); background: var(--brand-soft); border-color: var(--brand); }
+  .icon-btn.danger:hover { border-color: #d63b3b; color: #d63b3b; background: #fdeceb; }
+
+  /* ---------- Comentarios ---------- */
+  .comments-title { font-size: 13.5px; font-weight: 700; margin: 4px 0 10px; }
+  .comment-item { display: flex; gap: 10px; margin-bottom: 14px; animation: rise 0.24s var(--ease); }
+  .comment-body { flex: 1; min-width: 0; }
+  .comment-bubble {
+    background: var(--surface-1); border-radius: var(--radius-md); border-top-left-radius: 4px;
+    padding: 9px 13px;
+  }
+  .comment-name { font-size: 12.5px; font-weight: 700; margin: 0 0 2px; }
+  .comment-text { font-size: 13.5px; line-height: 1.5; margin: 0; color: var(--ink-900); }
+  .comment-actions { display: flex; gap: 12px; margin: 5px 0 0 4px; }
+  .comment-actions button {
+    background: none; border: none; font-family: var(--font); font-size: 11.5px;
+    font-weight: 600; color: var(--ink-500); cursor: pointer; padding: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .comment-actions button:hover { color: var(--brand); }
+  .comment-actions svg { width: 12px; height: 12px; }
+  .comment-date { font-size: 11px; color: var(--ink-300); font-weight: 500; margin-left: 4px; }
+
+  .comment-composer { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; }
+  .comment-input {
+    flex: 1; border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 10px 13px; font-family: var(--font); font-size: 13.5px; resize: none;
+    outline: none; min-height: 40px; transition: border-color 0.15s var(--ease);
+  }
+  .comment-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .comment-send {
+    width: 38px; height: 38px; border: none; background: var(--brand); color: white;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.18s var(--ease);
+  }
+  .comment-send svg { width: 16px; height: 16px; }
+  .comment-send:hover { background: var(--brand-hover); }
+
+  /* ---------- Paneles laterales (apilados: el ancho fijo del widget
+     no permite un sidebar real, asi que se muestran como secciones
+     debajo del feed, con el mismo contenido e informacion) ---------- */
+  .forum-panel { background: var(--surface-0); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px; }
+  .forum-panel h3 {
+    font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--ink-500); margin: 0 0 11px; display: flex; align-items: center; gap: 6px;
+  }
+  .forum-panel h3 svg { width: 14px; height: 14px; }
+  .panel-row { display: flex; align-items: center; gap: 9px; padding: 6px 0; }
+  .panel-row + .panel-row { border-top: 1px solid var(--surface-2); }
+  .panel-rank {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2);
+    color: var(--ink-500); font-size: 10.5px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .panel-row:nth-child(1) .panel-rank { background: #fdecea; color: var(--brand); }
+  .panel-info { flex: 1; min-width: 0; }
+  .panel-info .p-title { font-size: 12.5px; font-weight: 600; color: var(--ink-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel-info .p-sub { font-size: 11px; color: var(--ink-500); }
+  .panel-count { font-size: 11.5px; font-weight: 700; color: var(--ink-500); flex-shrink: 0; }
+
+  /* ---------- Modal generico (nueva publicacion / confirmacion / perfil) ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(23, 24, 28, 0.55);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 50; animation: fadeIn 0.18s var(--ease);
+    backdrop-filter: blur(1px);
+  }
+  @media (min-width: 481px) { .modal-overlay { align-items: center; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-sheet {
+    background: var(--surface-0); width: 100%; max-width: 420px;
+    max-height: 85%; overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 20px; animation: slideUp 0.24s var(--ease);
+    box-shadow: var(--shadow-lg);
+  }
+  @media (min-width: 481px) { .modal-sheet { border-radius: var(--radius-lg); margin: 20px; } }
+  @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-header h3 { font-size: 15.5px; font-weight: 800; margin: 0; }
+  .modal-close { background: var(--surface-1); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink-700); }
+  .modal-close svg { width: 15px; height: 15px; }
+  .modal-close:hover { background: var(--surface-2); }
+  .modal-label { font-size: 12px; font-weight: 700; color: var(--ink-500); margin: 12px 0 6px; }
+  .modal-label:first-of-type { margin-top: 0; }
+  textarea.field { resize: vertical; min-height: 90px; font-family: var(--font); }
+  select.field { font-family: var(--font); cursor: pointer; background: var(--surface-0); }
+
+  .modal-confirm-text { font-size: 13.5px; color: var(--ink-700); line-height: 1.5; margin: 0 0 16px; }
+  .modal-confirm-actions { display: flex; gap: 8px; }
+  .modal-confirm-actions .icon-btn { flex: 1; justify-content: center; padding: 10px; }
+
+  /* ---------- Perfil de autor ---------- */
+  .profile-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .profile-name { font-size: 15.5px; font-weight: 800; }
+  .profile-sub { font-size: 12px; color: var(--ink-500); }
+  .profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .profile-stat { background: var(--surface-1); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+  .profile-stat .num { font-size: 19px; font-weight: 800; color: var(--brand); }
+  .profile-stat .lbl { font-size: 11px; color: var(--ink-500); margin-top: 2px; }
+
+  /* ---------- Toast ---------- */
+  #toast-host { position: fixed; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; pointer-events: none; z-index: 60; }
+  .toast {
+    background: var(--ink-900); color: white; font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border-radius: var(--radius-full); box-shadow: var(--shadow-md);
+    display: flex; align-items: center; gap: 8px;
+    animation: toastIn 0.22s var(--ease), toastOut 0.22s var(--ease) 1.8s forwards;
+  }
+  .toast svg { width: 15px; height: 15px; color: var(--success); flex-shrink: 0; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(8px); } }
+
+  /* ---------- Skeletons de publicaciones ---------- */
+  .post-skel { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 10px; }
+  .post-skel .skeleton-line { margin-bottom: 8px; }
+
+  /* ---------- Estado vacio del foro ---------- */
+  .forum-empty { text-align: center; padding: 46px 16px; color: var(--ink-500); }
+  .forum-empty svg { width: 34px; height: 34px; margin-bottom: 12px; opacity: 0.45; }
+  .forum-empty p { font-size: 13.5px; margin: 0 0 14px; }
+</style>
+</head>
+<body>
+
+<div id="page-header">
+  <div class="mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </div>
+  <div class="titles">
+    <div class="t1">ACA · Tiendas Full</div>
+    <div class="t2"><span id="status-dot" style="margin-right:4px;"></span>Asistente, Foro y Manuales</div>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn" data-tab="foro">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.72.72 1.23 1.44 1.41 2.5"/></svg>
+    Foro
+  </button>
+  <button class="tab-btn active" data-tab="chat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Chat
+  </button>
+  <button class="tab-btn" data-tab="manuales">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Manuales
+  </button>
+</div>
+
+<div id="layout">
+
+  <!-- ============ COLUMNA IZQUIERDA: FORO DE IDEAS Y BUENAS PRACTICAS ============ -->
+  <div class="panel" id="panel-foro">
+    <div class="panel-header">
+      <p class="eyebrow">💡 Foro</p>
+      <h2>Ideas y Buenas Prácticas</h2>
+    </div>
+    <div class="panel-body">
+
+      <!-- Listado -->
+      <div id="forum-list-view" class="active">
+        <div class="forum-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="forum-search-input" type="text" placeholder="Buscar publicaciones..." autocomplete="off" />
+        </div>
+
+        <button class="forum-new-btn" id="forum-new-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Nueva publicación
+        </button>
+
+        <div class="forum-chiprow" id="forum-sort-row"></div>
+        <select class="forum-cat-select" id="forum-cat-select"></select>
+
+        <div id="forum-posts-container"></div>
+
+        <div id="forum-panels"></div>
+      </div>
+
+      <!-- Detalle de publicacion -->
+      <div id="forum-detail-view">
+        <button class="detail-back" id="forum-back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Volver al foro
+        </button>
+        <div id="forum-detail-content"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ COLUMNA CENTRAL: CHAT ============ -->
+  <div class="panel active" id="panel-chat">
+    <div id="header">
+      <div id="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div id="header-text">
+        <div class="title">Asistente Tiendas Full</div>
+        <div class="subtitle"><span id="status-dot-chat"></span>ACA · En línea</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div id="messages"></div>
+      <div id="inputbar">
+        <input id="input" type="text" placeholder="Escribí tu consulta..." autocomplete="off" />
+        <button id="send" aria-label="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COLUMNA DERECHA: MANUALES ============ -->
+  <div class="panel" id="panel-manuales">
+    <div class="panel-header">
+      <p class="eyebrow">📂 Manuales</p>
+      <h2>Documentación del sector</h2>
+    </div>
+    <div class="panel-body">
+      <div id="manuales-list">
+        <div id="manuales-content"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Host para modales del foro (nueva publicacion, confirmaciones, perfil de autor) -->
+<div id="forum-modal-host"></div>
+<!-- Host para notificaciones tipo toast -->
+<div id="toast-host"></div>
+
+<script>
+  const FORMSPREE_URL = "https://formspree.io/f/TU_ID_AQUI";
+
+  const MANUALES = [
+    {
+      titulo: "Manual Full 2026",
+      descripcion: "Versión 6.4 · Diciembre 2025 · Original",
+      archivo: "manuales/manual-full-2026.pdf",
+      tamano: "23 MB",
+    },
+    {
+      titulo: "Carpeta Bromatología",
+      descripcion: "Versión 2.0 · Octubre 2020",
+      archivo: "manuales/carpeta-bromatologia.pdf",
+      tamano: "460 KB",
+    },
+    {
+      titulo: "Ciclo de Servicio - Venta en Salón",
+      descripcion: "Infografía del ciclo completo",
+      archivo: "manuales/ciclo-de-servicios-full.pdf",
+      tamano: "890 KB",
+    },
+  ];
+
+  function icon(name) {
+    const icons = {
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+      "user-plus": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>',
+      send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+      file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>',
+      download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
+      "book-x": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    };
+    return icons[name] || "";
+  }
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach((v) => v.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // En desktop se ven las 3 columnas al mismo tiempo, asi que el Foro y los
+  // Manuales se cargan de entrada (no solo cuando se hace clic en la pestaña,
+  // como pasaba en la version de una sola tarjeta).
+  loadManuales();
+
+  let manualesLoaded = false;
+  function loadManuales() {
+    if (manualesLoaded) return;
+    const content = document.getElementById("manuales-content");
+
+    content.innerHTML = Array(2).fill(
+      '<div class="skeleton-card"><div class="skeleton-box skeleton-icon"></div>' +
+      '<div class="skeleton-lines"><div class="skeleton-box skeleton-line w60"></div>' +
+      '<div class="skeleton-box skeleton-line w35"></div></div></div>'
+    ).join("");
+
+    setTimeout(() => {
+      manualesLoaded = true;
+      if (MANUALES.length === 0) {
+        content.innerHTML =
+          '<div class="empty-state">' + icon("book-x") + '<p>Todavía no hay manuales cargados.</p></div>';
+        return;
+      }
+      content.innerHTML = MANUALES.map((m) =>
+        '<div class="doc-card"><div class="doc-icon">' + icon("file") + '</div>' +
+        '<div class="doc-info"><p class="doc-title">' + m.titulo + '</p>' +
+        '<div class="doc-meta">' + m.descripcion + ' · ' + m.tamano + '</div></div>' +
+        '<a class="doc-download" href="' + m.archivo + '" download aria-label="Descargar ' + m.titulo + '">' + icon("download") + '</a></div>'
+      ).join("");
+    }, 450);
+  }
+
+
+  // ============================================================
+  // FORO DE IDEAS Y BUENAS PRACTICAS
+  // Seccion 100% independiente del chat: no usa IA, funciona
+  // como un foro tradicional.
+  // ============================================================
+
+  // ---------- CAPA DE DATOS (hoy: localStorage / manana: Supabase) ----------
+  // Todos los metodos son async y devuelven Promesas a proposito,
+  // aunque hoy el trabajo es sincrono. El dia que se reemplace por
+  // Supabase, solo hay que reescribir el CUERPO de estos metodos
+  // (por ejemplo, cambiar this._read por un supabase.from(...).select())
+  // sin tocar ningun lugar de la app que los llama, porque ya usan await.
+  // Reemplazá estos dos valores por los de tu proyecto de Supabase
+  // (Project Settings -> API). La "anon key" es publica a proposito,
+  // esta pensada para usarse del lado del navegador.
+  const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
+  const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  // Convierte una fila de la tabla forum_posts (formato de la base de
+  // datos) al formato que ya usa el resto de la app (formato de la UI).
+  function rowToPost(row) {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      category: row.category,
+      status: row.status,
+      author: row.author,
+      date: row.created_at,
+      views: row.views,
+      likes: row.likes || [],
+      comments: row.comments || [],
+    };
+  }
+
+  const ForumStore = {
+    // NOTA: esta capa reemplaza a la version anterior basada en
+    // localStorage. Las firmas de los metodos son las mismas para
+    // que el resto de la app (renderForumList, renderPostDetail,
+    // etc.) no haya necesitado ningun cambio.
+    async getPosts() {
+      if (!supabaseClient) { showToast("Falta configurar Supabase (ver README)"); return []; }
+      const { data, error } = await supabaseClient
+        .from("forum_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error cargando publicaciones:", error);
+        showToast("No se pudo conectar con el foro");
+        return [];
+      }
+      return data.map(rowToPost);
+    },
+    async getPost(id) {
+      if (!supabaseClient) { showToast("Falta configurar Supabase (ver README)"); return null; }
+      const { data, error } = await supabaseClient.from("forum_posts").select("*").eq("id", id).single();
+      if (error) {
+        console.error("Error cargando publicación:", error);
+        return null;
+      }
+      return rowToPost(data);
+    },
+    async upsertPost(post) {
+      if (!supabaseClient) { showToast("Falta configurar Supabase (ver README)"); return post; }
+      const row = {
+        id: post.id,
+        title: post.title,
+        description: post.description,
+        category: post.category,
+        status: post.status,
+        author: post.author,
+        created_at: post.date,
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+      };
+      const { error } = await supabaseClient.from("forum_posts").upsert(row);
+      if (error) {
+        console.error("Error guardando publicación:", error);
+        showToast("No se pudo guardar. Revisá tu conexión.");
+      }
+      return post;
+    },
+    async deletePost(id) {
+      if (!supabaseClient) { showToast("Falta configurar Supabase (ver README)"); return; }
+      const { error } = await supabaseClient.from("forum_posts").delete().eq("id", id);
+      if (error) {
+        console.error("Error eliminando publicación:", error);
+        showToast("No se pudo eliminar. Revisá tu conexión.");
+      }
+    },
+
+    // La identidad del usuario sigue siendo local a proposito: no es
+    // un login real, es solo el nombre con el que participa cada
+    // persona desde su propio dispositivo.
+    async getCurrentUser() {
+      try {
+        const raw = localStorage.getItem("forum:user");
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    async setCurrentUser(name) {
+      const user = { id: "u_" + Math.random().toString(36).slice(2, 10), name };
+      localStorage.setItem("forum:user", JSON.stringify(user));
+      return user;
+    },
+  };
+
+  // ---------- CATEGORIAS (referidas al Manual Full) ----------
+  const FORUM_CATEGORIES = [
+    "Atención al Cliente",
+    "Ciclo de Servicio",
+    "Imagen y Presentación",
+    "Seguridad Alimentaria",
+    "Gestión y Stock",
+    "Capacitación",
+    "Otro",
+  ];
+
+  const FORUM_STATUSES = {
+    nueva: { label: "Nueva", emoji: "🟡", cls: "st-nueva" },
+    evaluacion: { label: "En evaluación", emoji: "🔵", cls: "st-evaluacion" },
+    implementada: { label: "Implementada", emoji: "🟢", cls: "st-implementada" },
+    cerrada: { label: "Cerrada", emoji: "⚪", cls: "st-cerrada" },
+  };
+
+  const AVATAR_COLORS = ["#c0392b", "#2f6fed", "#1f9d55", "#d97a06", "#8452d5", "#0e9aa7"];
+  function avatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  }
+  function initials(name) {
+    return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  }
+  function avatarHTML(name, size) {
+    const cls = size === "lg" ? "avatar lg" : "avatar";
+    return '<div class="' + cls + '" style="background:' + avatarColor(name) + '">' + initials(name) + "</div>";
+  }
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return "ahora";
+    if (min < 60) return min + " min";
+    const hs = Math.floor(min / 60);
+    if (hs < 24) return hs + " h";
+    const d = Math.floor(hs / 24);
+    if (d < 30) return d + " d";
+    return new Date(iso).toLocaleDateString("es-AR");
+  }
+  function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ---------- ESTADO EN MEMORIA DE LA VISTA ----------
+  let forumUser = null;
+  let forumInitialized = false;
+  let forumSort = "recientes";
+  let forumCategory = "todas";
+  let forumSearch = "";
+  let currentPostId = null;
+
+  // ---------- TOAST ----------
+  function showToast(message) {
+    const host = document.getElementById("toast-host");
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+      escapeHtml(message);
+    host.appendChild(el);
+    setTimeout(() => el.remove(), 2100);
+  }
+
+  // ---------- MODALES ----------
+  function closeModal() {
+    document.getElementById("forum-modal-host").innerHTML = "";
+  }
+  function openModal(innerHTML) {
+    document.getElementById("forum-modal-host").innerHTML =
+      '<div class="modal-overlay" id="modal-overlay-el"><div class="modal-sheet">' + innerHTML + "</div></div>";
+    document.getElementById("modal-overlay-el").addEventListener("click", (e) => {
+      if (e.target.id === "modal-overlay-el") closeModal();
+    });
+  }
+
+  function showConfirm(message, onConfirm) {
+    openModal(
+      '<p class="modal-confirm-text">' + escapeHtml(message) + "</p>" +
+      '<div class="modal-confirm-actions">' +
+      '<button class="icon-btn" id="confirm-cancel">Cancelar</button>' +
+      '<button class="icon-btn danger" id="confirm-ok">Eliminar</button>' +
+      "</div>"
+    );
+    document.getElementById("confirm-cancel").onclick = closeModal;
+    document.getElementById("confirm-ok").onclick = () => {
+      closeModal();
+      onConfirm();
+    };
+  }
+
+  // Pide un nombre para identificar al usuario en el foro (una unica vez).
+  // No es un login real: es solo para poder mostrar autoria y permitir
+  // editar/borrar las publicaciones propias, como pide el brief.
+  function ensureForumUser(callback) {
+    if (forumUser) return callback();
+    openModal(
+      '<div class="modal-header"><h3>Antes de continuar</h3></div>' +
+      '<p class="modal-confirm-text">¿Con qué nombre querés participar en el foro? Se va a mostrar en tus publicaciones y comentarios.</p>' +
+      '<input class="field" id="username-input" placeholder="Tu nombre" />' +
+      '<button class="btn-full" id="username-submit">Continuar</button>'
+    );
+    document.getElementById("username-submit").onclick = async () => {
+      const name = document.getElementById("username-input").value.trim();
+      if (!name) return;
+      forumUser = await ForumStore.setCurrentUser(name);
+      closeModal();
+      callback();
+    };
+  }
+
+  function showAuthorProfile(authorName) {
+    ForumStore.getPosts().then((posts) => {
+      const own = posts.filter((p) => p.author === authorName);
+      const implemented = own.filter((p) => p.status === "implementada").length;
+      let commentCount = 0;
+      let likesReceived = 0;
+      posts.forEach((p) => {
+        if (p.author === authorName) likesReceived += p.likes.length;
+        p.comments.forEach((c) => {
+          if (c.author === authorName) commentCount++;
+        });
+      });
+      openModal(
+        '<div class="modal-header"><h3>Perfil</h3><button class="modal-close" id="profile-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>' +
+        '<div class="profile-head">' + avatarHTML(authorName, "lg") +
+        '<div><div class="profile-name">' + escapeHtml(authorName) + "</div>" +
+        '<div class="profile-sub">Miembro del foro</div></div></div>' +
+        '<div class="profile-stats">' +
+        '<div class="profile-stat"><div class="num">' + own.length + '</div><div class="lbl">Publicaciones</div></div>' +
+        '<div class="profile-stat"><div class="num">' + implemented + '</div><div class="lbl">Ideas implementadas</div></div>' +
+        '<div class="profile-stat"><div class="num">' + commentCount + '</div><div class="lbl">Comentarios</div></div>' +
+        '<div class="profile-stat"><div class="num">' + likesReceived + '</div><div class="lbl">Me gusta recibidos</div></div>' +
+        "</div>"
+      );
+      document.getElementById("profile-close").onclick = closeModal;
+    });
+  }
+
+  // ---------- CREAR / EDITAR PUBLICACION ----------
+  function openPostForm(existingPost) {
+    ensureForumUser(() => {
+      const isEdit = !!existingPost;
+      const catsOptions = FORUM_CATEGORIES.map(
+        (c) => '<option value="' + c + '"' + (existingPost && existingPost.category === c ? " selected" : "") + ">" + c + "</option>"
+      ).join("");
+      openModal(
+        '<div class="modal-header"><h3>' + (isEdit ? "Editar publicación" : "Nueva publicación") + '</h3>' +
+        '<button class="modal-close" id="form-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>' +
+        '<div class="modal-label">Título</div>' +
+        '<input class="field" id="post-title" placeholder="Un título breve y claro" value="' + (existingPost ? escapeHtml(existingPost.title) : "") + '" />' +
+        '<div class="modal-label">Categoría</div>' +
+        '<select class="field" id="post-category">' + catsOptions + "</select>" +
+        '<div class="modal-label">Descripción</div>' +
+        '<textarea class="field" id="post-desc" placeholder="Contá tu idea, buena práctica, caso de éxito o problema resuelto...">' + (existingPost ? escapeHtml(existingPost.description) : "") + "</textarea>" +
+        '<button class="btn-full" id="post-submit">' + (isEdit ? "Guardar cambios" : "Publicar") + "</button>"
+      );
+      document.getElementById("form-close").onclick = closeModal;
+      document.getElementById("post-submit").onclick = async () => {
+        const title = document.getElementById("post-title").value.trim();
+        const category = document.getElementById("post-category").value;
+        const description = document.getElementById("post-desc").value.trim();
+        if (!title || !description) return;
+
+        if (isEdit) {
+          existingPost.title = title;
+          existingPost.category = category;
+          existingPost.description = description;
+          await ForumStore.upsertPost(existingPost);
+          showToast("Publicación actualizada");
+        } else {
+          const newPost = {
+            id: "p_" + Math.random().toString(36).slice(2, 10),
+            title,
+            category,
+            description,
+            author: forumUser.name,
+            status: "nueva",
+            date: new Date().toISOString(),
+            likes: [],
+            views: 0,
+            comments: [],
+          };
+          await ForumStore.upsertPost(newPost);
+          showToast("Publicación creada");
+        }
+        closeModal();
+        await renderForumList();
+      };
+    });
+  }
+
+  // ---------- LIKES ----------
+  async function togglePostLike(postId) {
+    ensureForumUser(async () => {
+      const post = await ForumStore.getPost(postId);
+      const idx = post.likes.indexOf(forumUser.id);
+      if (idx >= 0) post.likes.splice(idx, 1);
+      else post.likes.push(forumUser.id);
+      await ForumStore.upsertPost(post);
+      renderPostDetail(postId);
+    });
+  }
+  async function toggleCommentLike(postId, commentId) {
+    ensureForumUser(async () => {
+      const post = await ForumStore.getPost(postId);
+      const c = post.comments.find((c) => c.id === commentId);
+      const idx = c.likes.indexOf(forumUser.id);
+      if (idx >= 0) c.likes.splice(idx, 1);
+      else c.likes.push(forumUser.id);
+      await ForumStore.upsertPost(post);
+      renderPostDetail(postId);
+    });
+  }
+
+  // ---------- COMENTARIOS ----------
+  async function submitComment(postId) {
+    ensureForumUser(async () => {
+      const textEl = document.getElementById("comment-input");
+      const text = textEl.value.trim();
+      if (!text) return;
+      const post = await ForumStore.getPost(postId);
+      post.comments.push({
+        id: "c_" + Math.random().toString(36).slice(2, 10),
+        author: forumUser.name,
+        date: new Date().toISOString(),
+        text,
+        likes: [],
+      });
+      await ForumStore.upsertPost(post);
+      showToast("Comentario publicado");
+      renderPostDetail(postId);
+    });
+  }
+
+  function renderComments(post) {
+    if (post.comments.length === 0) {
+      return '<p style="font-size:13px;color:var(--ink-500);margin:0 0 14px;">Todavía no hay comentarios. Sé el primero en opinar.</p>';
+    }
+    return post.comments
+      .slice()
+      .reverse()
+      .map((c) => {
+        const liked = forumUser && c.likes.includes(forumUser.id);
+        return (
+          '<div class="comment-item">' +
+          avatarHTML(c.author) +
+          '<div class="comment-body">' +
+          '<div class="comment-bubble">' +
+          '<p class="comment-name">' + escapeHtml(c.author) + "</p>" +
+          '<p class="comment-text">' + escapeHtml(c.text) + "</p>" +
+          "</div>" +
+          '<div class="comment-actions">' +
+          '<button onclick="toggleCommentLike(\'' + post.id + "','" + c.id + '\')">' +
+          '<svg viewBox="0 0 24 24" fill="' + (liked ? "currentColor" : "none") + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>' +
+          (c.likes.length > 0 ? c.likes.length : "Me gusta") +
+          "</button>" +
+          '<span class="comment-date">' + timeAgo(c.date) + "</span>" +
+          "</div></div></div>"
+        );
+      })
+      .join("");
+  }
+
+  // ---------- DETALLE DE PUBLICACION ----------
+  async function openPostDetail(postId) {
+    currentPostId = postId;
+    const post = await ForumStore.getPost(postId);
+    if (!post) return;
+    post.views = (post.views || 0) + 1;
+    await ForumStore.upsertPost(post);
+
+    document.getElementById("forum-list-view").classList.remove("active");
+    document.getElementById("forum-detail-view").classList.add("active");
+    renderPostDetail(postId);
+  }
+
+  async function renderPostDetail(postId) {
+    const post = await ForumStore.getPost(postId);
+    if (!post) return;
+    const container = document.getElementById("forum-detail-content");
+    const st = FORUM_STATUSES[post.status];
+    const isOwner = forumUser && forumUser.name === post.author;
+    const liked = forumUser && post.likes.includes(forumUser.id);
+
+    container.innerHTML =
+      '<div class="detail-card">' +
+      '<div class="post-card-top">' +
+      '<span class="post-category">' + escapeHtml(post.category) + "</span>" +
+      '<span class="post-status ' + st.cls + '"><span class="dot"></span>' + st.label + "</span>" +
+      "</div>" +
+      '<h2 class="detail-title">' + escapeHtml(post.title) + "</h2>" +
+      '<div class="post-author-row" style="margin-bottom:12px;">' +
+      avatarHTML(post.author) +
+      '<button class="author-name" onclick="showAuthorProfile(\'' + post.author.replace(/'/g, "\\'") + '\')">' + escapeHtml(post.author) + "</button>" +
+      '<span class="post-date">· ' + timeAgo(post.date) + "</span>" +
+      "</div>" +
+      '<p class="detail-desc">' + escapeHtml(post.description) + "</p>" +
+      '<div class="detail-actions">' +
+      '<button class="icon-btn' + (liked ? " liked" : "") + '" onclick="togglePostLike(\'' + post.id + '\')">' +
+      '<svg viewBox="0 0 24 24" fill="' + (liked ? "currentColor" : "none") + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>' +
+      post.likes.length + " Me gusta</button>" +
+      '<span class="icon-btn" style="cursor:default;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>' +
+      post.views + " vistas</span>" +
+      (isOwner
+        ? '<button class="icon-btn" id="post-edit-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Editar</button>' +
+          '<button class="icon-btn danger" id="post-delete-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Eliminar</button>'
+        : "") +
+      "</div></div>" +
+      '<p class="comments-title">Comentarios (' + post.comments.length + ")</p>" +
+      '<div id="comments-list">' + renderComments(post) + "</div>" +
+      '<div class="comment-composer">' +
+      '<textarea class="comment-input" id="comment-input" placeholder="Escribí un comentario..." rows="1"></textarea>' +
+      '<button class="comment-send" id="comment-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>' +
+      "</div>";
+
+    document.getElementById("comment-send-btn").onclick = () => submitComment(post.id);
+    if (isOwner) {
+      document.getElementById("post-edit-btn").onclick = () => openPostForm(post);
+      document.getElementById("post-delete-btn").onclick = () => {
+        showConfirm("¿Eliminar esta publicación? Esta acción no se puede deshacer.", async () => {
+          await ForumStore.deletePost(post.id);
+          showToast("Publicación eliminada");
+          backToForumList();
+        });
+      };
+    }
+  }
+
+  function backToForumList() {
+    document.getElementById("forum-detail-view").classList.remove("active");
+    document.getElementById("forum-list-view").classList.add("active");
+    renderForumList();
+  }
+
+  // ---------- LISTADO / ORDEN / FILTROS ----------
+  const SORT_OPTIONS = [
+    { key: "recientes", label: "Recientes", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>' },
+    { key: "votadas", label: "Más votadas", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>' },
+    { key: "destacadas", label: "Destacadas", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>' },
+    { key: "comentadas", label: "Más comentadas", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' },
+    { key: "vistas", label: "Más vistas", icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>' },
+  ];
+
+  function renderSortRow() {
+    const row = document.getElementById("forum-sort-row");
+    row.innerHTML = SORT_OPTIONS.map(
+      (o) =>
+        '<button class="forum-sort-chip' + (forumSort === o.key ? " active" : "") + '" data-sort="' + o.key + '">' +
+        o.icon + o.label + "</button>"
+    ).join("");
+    row.querySelectorAll(".forum-sort-chip").forEach((btn) => {
+      btn.onclick = () => {
+        forumSort = btn.dataset.sort;
+        renderForumList();
+      };
+    });
+  }
+
+  function renderCategorySelect() {
+    const sel = document.getElementById("forum-cat-select");
+    sel.innerHTML =
+      '<option value="todas">📂 Todas las categorías</option>' +
+      FORUM_CATEGORIES.map((c) => '<option value="' + c + '"' + (forumCategory === c ? " selected" : "") + ">" + c + "</option>").join("");
+    sel.onchange = () => {
+      forumCategory = sel.value;
+      renderForumList();
+    };
+  }
+
+  function sortPosts(posts) {
+    const copy = posts.slice();
+    if (forumSort === "recientes") copy.sort((a, b) => new Date(b.date) - new Date(a.date));
+    else if (forumSort === "votadas" || forumSort === "destacadas") copy.sort((a, b) => b.likes.length - a.likes.length);
+    else if (forumSort === "comentadas") copy.sort((a, b) => b.comments.length - a.comments.length);
+    else if (forumSort === "vistas") copy.sort((a, b) => b.views - a.views);
+    return copy;
+  }
+
+  function postCardHTML(post) {
+    const st = FORUM_STATUSES[post.status];
+    return (
+      '<div class="post-card" data-post-id="' + post.id + '">' +
+      '<div class="post-card-top">' +
+      '<span class="post-category">' + escapeHtml(post.category) + "</span>" +
+      '<span class="post-status ' + st.cls + '"><span class="dot"></span>' + st.label + "</span>" +
+      "</div>" +
+      '<p class="post-card-title">' + escapeHtml(post.title) + "</p>" +
+      '<p class="post-card-desc">' + escapeHtml(post.description) + "</p>" +
+      '<div class="post-card-footer">' +
+      '<div class="post-author-row">' + avatarHTML(post.author) +
+      '<span class="author-name" style="cursor:default;">' + escapeHtml(post.author) + "</span>" +
+      '<span class="post-date">· ' + timeAgo(post.date) + "</span></div>" +
+      '<div class="post-meta">' +
+      '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>' + post.likes.length + "</span>" +
+      '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + post.comments.length + "</span>" +
+      '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>' + post.views + "</span>" +
+      "</div></div></div>"
+    );
+  }
+
+  function renderPanels(posts) {
+    const host = document.getElementById("forum-panels");
+    if (posts.length === 0) {
+      host.innerHTML = "";
+      return;
+    }
+    // Top colaboradores (por publicaciones + comentarios)
+    const contrib = {};
+    posts.forEach((p) => {
+      contrib[p.author] = (contrib[p.author] || 0) + 2;
+      p.comments.forEach((c) => (contrib[c.author] = (contrib[c.author] || 0) + 1));
+    });
+    const topContrib = Object.entries(contrib).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    const topLiked = posts.slice().sort((a, b) => b.likes.length - a.likes.length).slice(0, 3);
+    const recent = posts.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+
+    const catCounts = {};
+    posts.forEach((p) => (catCounts[p.category] = (catCounts[p.category] || 0) + 1));
+    const topCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+
+    host.innerHTML =
+      '<div class="forum-panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/><circle cx="12" cy="8" r="7"/></svg>Top colaboradores</h3>' +
+      topContrib
+        .map(
+          (c, i) =>
+            '<div class="panel-row"><div class="panel-rank">' + (i + 1) + "</div>" +
+            avatarHTML(c[0]) +
+            '<div class="panel-info"><div class="p-title">' + escapeHtml(c[0]) + "</div></div>" +
+            '<div class="panel-count">' + c[1] + " pts</div></div>"
+        )
+        .join("") +
+      "</div>" +
+      '<div class="forum-panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Ideas más populares</h3>' +
+      topLiked
+        .map(
+          (p, i) =>
+            '<div class="panel-row"><div class="panel-rank">' + (i + 1) + "</div>" +
+            '<div class="panel-info"><div class="p-title">' + escapeHtml(p.title) + "</div>" +
+            '<div class="p-sub">' + escapeHtml(p.author) + "</div></div>" +
+            '<div class="panel-count">' + p.likes.length + " ♥</div></div>"
+        )
+        .join("") +
+      "</div>" +
+      '<div class="forum-panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Últimas publicaciones</h3>' +
+      recent
+        .map(
+          (p) =>
+            '<div class="panel-row">' +
+            '<div class="panel-info"><div class="p-title">' + escapeHtml(p.title) + "</div>" +
+            '<div class="p-sub">' + escapeHtml(p.author) + " · " + timeAgo(p.date) + "</div></div></div>"
+        )
+        .join("") +
+      "</div>" +
+      '<div class="forum-panel"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Categorías más activas</h3>' +
+      topCats
+        .map((c) => '<div class="panel-row"><div class="panel-info"><div class="p-title">' + escapeHtml(c[0]) + "</div></div>" + '<div class="panel-count">' + c[1] + "</div></div>")
+        .join("") +
+      "</div>";
+  }
+
+  async function renderForumList() {
+    const container = document.getElementById("forum-posts-container");
+    let posts = await ForumStore.getPosts();
+
+    if (forumCategory !== "todas") posts = posts.filter((p) => p.category === forumCategory);
+    if (forumSearch) {
+      const q = forumSearch.toLowerCase();
+      posts = posts.filter((p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+    }
+    posts = sortPosts(posts);
+
+    if (posts.length === 0) {
+      container.innerHTML =
+        '<div class="forum-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        "<p>Todavía no hay publicaciones acá.<br/>Sé el primero en compartir una idea.</p>" +
+        '<button class="forum-new-btn" style="width:auto;padding:10px 18px;" onclick="openPostForm()">+ Nueva publicación</button></div>';
+    } else {
+      container.innerHTML = posts.map(postCardHTML).join("");
+      container.querySelectorAll(".post-card").forEach((card) => {
+        card.onclick = () => openPostDetail(card.dataset.postId);
+      });
+    }
+
+    renderPanels(await ForumStore.getPosts());
+  }
+
+  // ---------- INIT DEL FORO (carga perezosa, igual patron que Manuales) ----------
+  async function initForum() {
+    if (forumInitialized) return;
+    forumInitialized = true;
+
+    forumUser = await ForumStore.getCurrentUser();
+
+    // Skeleton breve mientras se prepara la primera carga
+    document.getElementById("forum-posts-container").innerHTML = Array(2)
+      .fill(
+        '<div class="post-skel"><div class="skeleton-box skeleton-line w60"></div>' +
+        '<div class="skeleton-box skeleton-line w35"></div>' +
+        '<div class="skeleton-box skeleton-line" style="width:90%;height:8px;"></div></div>'
+      )
+      .join("");
+
+    renderSortRow();
+    renderCategorySelect();
+
+    setTimeout(() => renderForumList(), 350);
+
+    document.getElementById("forum-new-btn").onclick = () => openPostForm();
+    document.getElementById("forum-back-btn").onclick = backToForumList;
+
+    let searchTimeout;
+    document.getElementById("forum-search-input").addEventListener("input", (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        forumSearch = e.target.value.trim();
+        renderForumList();
+      }, 250);
+    });
+  }
+
+  const messagesEl = document.getElementById("messages");
+  const inputEl = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+
+  let history = [];
+  let stage = "idle";
+  let lastQuestion = "";
+  let loading = false;
+
+  function addBubble(role, text) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.justifyContent = role === "user" ? "flex-end" : "flex-start";
+    const b = document.createElement("div");
+    b.className = "bubble " + (role === "user" ? "user" : "bot");
+    b.textContent = text;
+    row.appendChild(b);
+    messagesEl.appendChild(row);
+    scrollDown();
+  }
+
+  function scrollDown() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function clearDynamic() {
+    document.querySelectorAll(".dynamic").forEach((el) => el.remove());
+  }
+
+  function showTyping() {
+    const row = document.createElement("div");
+    row.className = "typing-row dynamic";
+    row.innerHTML = '<div class="typing-bubble"><span></span><span></span><span></span></div>';
+    messagesEl.appendChild(row);
+    scrollDown();
+  }
+
+  function showConfirmButtons() {
+    clearDynamic();
+    const div = document.createElement("div");
+    div.className = "actions dynamic";
+    div.innerHTML =
+      '<button class="chip" id="confirm-yes">' + icon("check") + ' Sí, gracias</button>' +
+      '<button class="chip" id="confirm-no">' + icon("x") + ' No</button>';
+    messagesEl.appendChild(div);
+    scrollDown();
+    document.getElementById("confirm-yes").onclick = () => handleConfirm(true);
+    document.getElementById("confirm-no").onclick = () => handleConfirm(false);
+  }
+
+  function showOfferEscalate() {
+    clearDynamic();
+    const div = document.createElement("div");
+    div.className = "actions dynamic";
+    div.innerHTML =
+      '<button class="chip primary" id="esc-yes">' + icon("user-plus") + ' Sí, derivame</button>' +
+      '<button class="chip" id="esc-no">' + icon("x") + ' No, gracias</button>';
+    messagesEl.appendChild(div);
+    scrollDown();
+    document.getElementById("esc-yes").onclick = () => handleOfferEscalate(true);
+    document.getElementById("esc-no").onclick = () => handleOfferEscalate(false);
+  }
+
+  function showContactForm() {
+    clearDynamic();
+    const div = document.createElement("div");
+    div.className = "card dynamic";
+    div.innerHTML =
+      '<input id="c-name" class="field" placeholder="Nombre" />' +
+      '<input id="c-phone" class="field" placeholder="Teléfono o email" />' +
+      '<button class="btn-full" id="c-submit">' + icon("send") + ' Enviar</button>';
+    messagesEl.appendChild(div);
+    scrollDown();
+    document.getElementById("c-submit").onclick = handleContactSubmit;
+  }
+
+  function setLoading(v) {
+    loading = v;
+    inputEl.disabled = v || stage === "contact";
+    sendBtn.disabled = v || stage === "contact";
+    clearDynamic();
+    if (v) showTyping();
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim() || loading) return;
+    addBubble("user", text);
+    lastQuestion = text;
+    inputEl.value = "";
+    history.push({ role: "user", content: text });
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history }),
+      });
+      const data = await res.json();
+      const reply = (data.reply || "").trim();
+
+      if (!reply || reply.includes("NO_ENCONTRADO")) {
+        history.push({ role: "assistant", content: reply || "NO_ENCONTRADO" });
+        setLoading(false);
+        addBubble("bot", "No tengo esa información en el manual. ¿Querés que derive tu consulta a una persona del equipo?");
+        stage = "offer_escalate";
+        showOfferEscalate();
+      } else {
+        history.push({ role: "assistant", content: reply });
+        setLoading(false);
+        addBubble("bot", reply);
+        stage = "confirm";
+        showConfirmButtons();
+      }
+    } catch (e) {
+      setLoading(false);
+      addBubble("bot", "Tuve un problema para responder. ¿Podés intentar de nuevo?");
+      stage = "idle";
+    }
+  }
+
+  function handleConfirm(resolved) {
+    clearDynamic();
+    if (resolved) {
+      addBubble("user", "Sí, gracias");
+      addBubble("bot", "¡Genial! Si tenés otra consulta, escribime cuando quieras.");
+      stage = "idle";
+    } else {
+      addBubble("user", "No");
+      addBubble("bot", "Entendido, te derivo con una persona del equipo. ¿Me pasás tu nombre y un teléfono o email de contacto?");
+      stage = "contact";
+      showContactForm();
+    }
+  }
+
+  function handleOfferEscalate(accept) {
+    clearDynamic();
+    if (accept) {
+      addBubble("user", "Sí, derivame");
+      addBubble("bot", "Perfecto. ¿Me pasás tu nombre y un teléfono o email de contacto?");
+      stage = "contact";
+      showContactForm();
+    } else {
+      addBubble("user", "No, gracias");
+      addBubble("bot", "Sin problema. Si tenés otra consulta, escribime cuando quieras.");
+      stage = "idle";
+    }
+  }
+
+  async function handleContactSubmit() {
+    const name = document.getElementById("c-name").value.trim();
+    const phone = document.getElementById("c-phone").value.trim();
+    if (!name || !phone) return;
+
+    try {
+      await fetch(FORMSPREE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          nombre: name,
+          contacto: phone,
+          consulta: lastQuestion,
+          fecha: new Date().toLocaleString("es-AR"),
+        }),
+      });
+    } catch (e) {
+      console.error("Error enviando derivación:", e);
+    }
+
+    clearDynamic();
+    addBubble("user", name + " - " + phone);
+    addBubble("bot", "Gracias, ya derivé tu consulta al equipo. Te van a contactar a la brevedad. ¿Necesitás algo más?");
+    stage = "idle";
+    inputEl.disabled = false;
+    sendBtn.disabled = false;
+  }
+
+  sendBtn.onclick = () => sendMessage(inputEl.value);
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !loading && stage !== "contact") {
+      sendMessage(inputEl.value);
+    }
+  });
+
+  addBubble("bot", "Hola, soy el asistente de Tiendas Full de ACA, entrenado con el Manual Full completo. Preguntame lo que necesites.");
+  initForum();
+</script>
+
+</body>
+</html>
