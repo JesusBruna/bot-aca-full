@@ -30,7 +30,12 @@
 
     --shadow-sm: 0 1px 2px rgba(15, 15, 20, 0.05);
     --shadow-md: 0 6px 20px -4px rgba(15, 15, 20, 0.12), 0 2px 6px rgba(15, 15, 20, 0.06);
-    --shadow-lg: 0 30px 60px -15px rgba(20, 22, 30, 0.28), 0 10px 24px -8px rgba(20, 22, 30, 0.16), 0 0 0 1px rgba(255,255,255,0.4);
+    --shadow-lg:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 -18px 30px -22px rgba(20, 22, 30, 0.35) inset,
+      0 36px 70px -18px rgba(15, 16, 22, 0.38),
+      0 14px 28px -10px rgba(15, 16, 22, 0.22),
+      0 2px 5px rgba(15, 16, 22, 0.14);
 
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -45,15 +50,7 @@
     -webkit-font-smoothing: antialiased;
     min-height: 100dvh;
     padding: 20px 14px 14px;
-    background-color: #d7dae0;
-    background-image:
-      radial-gradient(circle at 12% 8%, rgba(192, 57, 43, 0.10) 0%, rgba(192, 57, 43, 0) 42%),
-      radial-gradient(circle at 88% 14%, rgba(47, 111, 237, 0.12) 0%, rgba(47, 111, 237, 0) 40%),
-      radial-gradient(circle at 50% 100%, rgba(120, 130, 160, 0.14) 0%, rgba(120, 130, 160, 0) 55%),
-      linear-gradient(160deg, #eef0f4 0%, #dadde3 45%, #c8cbd3 100%),
-      linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255,255,255,0.5) 1px, transparent 1px);
-    background-size: auto, auto, auto, auto, 42px 42px, 42px 42px;
+    background: linear-gradient(160deg, #e9ebee 0%, #d5d8de 45%, #b9bcc4 100%);
     background-attachment: fixed;
   }
 
@@ -72,9 +69,9 @@
     color: white; display: flex; align-items: center; justify-content: center;
   }
   #page-header .mark svg { width: 17px; height: 17px; }
-  #page-header .titles { color: white; }
+  #page-header .titles { color: var(--ink-900); }
   #page-header .titles .t1 { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
-  #page-header .titles .t2 { font-size: 11.5px; color: #9a9ca3; display: flex; align-items: center; gap: 4px; }
+  #page-header .titles .t2 { font-size: 11.5px; color: var(--ink-500); display: flex; align-items: center; gap: 4px; }
 
   /* ============ LAYOUT: 1 columna (mobile) / 3 columnas (desktop) ============ */
   #layout {
@@ -87,18 +84,22 @@
     position: relative;
     width: 100%; max-width: 440px; margin: 0 auto;
     height: 88dvh; max-height: 760px;
-    background: var(--surface-0);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     overflow: hidden;
     display: none;
     flex-direction: column;
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.9);
+    border-bottom-color: rgba(20, 22, 30, 0.16);
+    border-left-color: rgba(230, 230, 234, 0.9);
+    border-right-color: rgba(210, 211, 218, 0.9);
   }
   .panel.active { display: flex; }
 
   .panel-header {
-    padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    padding: 24px 22px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
   .panel-header .eyebrow {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
@@ -115,21 +116,20 @@
 
   /* ============ DESKTOP / TABLET ANCHO: 3 columnas simultaneas ============ */
   @media (min-width: 1000px) {
-    #tabs { display: none; }
+    #tabs { display: none !important; }
     #layout {
       display: grid; grid-template-columns: 300px 460px 300px;
       gap: 20px; justify-content: center; align-items: start;
     }
     .panel { display: flex !important; max-width: none; margin: 0; height: 82vh; max-height: 800px; }
   }
-  }
 
   #header {
-    padding: 18px 20px 14px;
+    padding: 26px 24px 18px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     flex-shrink: 0;
   }
   #logo-mark {
@@ -814,7 +814,7 @@
 <div id="toast-host"></div>
 
 <script>
-  const FORMSPREE_URL = "https://formspree.io/f/TU_ID_AQUI";
+  const FORMSPREE_URL = "https://formspree.io/f/mojgwokn";
 
   const MANUALES = [
     {
@@ -859,10 +859,8 @@
     });
   });
 
-  // En desktop se ven las 3 columnas al mismo tiempo, asi que el Foro y los
-  // Manuales se cargan de entrada (no solo cuando se hace clic en la pestaña,
-  // como pasaba en la version de una sola tarjeta).
-  loadManuales();
+  // (loadManuales() e initForum() se llaman al final del script, una vez
+  // que todas sus funciones y variables ya estan declaradas)
 
   let manualesLoaded = false;
   function loadManuales() {
@@ -907,8 +905,8 @@
   // Reemplazá estos dos valores por los de tu proyecto de Supabase
   // (Project Settings -> API). La "anon key" es publica a proposito,
   // esta pensada para usarse del lado del navegador.
-  const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
-  const SUPABASE_ANON_KEY = "TU_ANON_KEY_AQUI";
+  const SUPABASE_URL = "https://vhemprdyaeouzfwtzdcd.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_onNBElS8weQFVGdNTstt0A_sLAMVrgp";
 
   const supabaseClient = window.supabase
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -1717,6 +1715,7 @@
   });
 
   addBubble("bot", "Hola, soy el asistente de Tiendas Full de ACA, entrenado con el Manual Full completo. Preguntame lo que necesites.");
+  loadManuales();
   initForum();
 </script>
 
