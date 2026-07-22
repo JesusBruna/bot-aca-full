@@ -110,6 +110,15 @@
 
   .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
+  @media (min-width: 1000px) {
+    .panel-header[data-center-target], #header[data-center-target] {
+      transition: background 0.18s var(--ease);
+    }
+    .panel-header[data-center-target]:hover, #header[data-center-target]:hover {
+      background: var(--surface-1);
+    }
+  }
+
   @media (max-width: 480px) {
     .panel { max-width: 100%; height: calc(100dvh - 110px); max-height: none; border-radius: var(--radius-lg); }
   }
@@ -733,7 +742,7 @@
 
   <!-- ============ COLUMNA IZQUIERDA: FORO DE IDEAS Y BUENAS PRACTICAS ============ -->
   <div class="panel" id="panel-foro">
-    <div class="panel-header">
+    <div class="panel-header" data-center-target="foro">
       <p class="eyebrow">💡 Foro</p>
       <h2>Ideas y Buenas Prácticas</h2>
     </div>
@@ -773,7 +782,7 @@
 
   <!-- ============ COLUMNA CENTRAL: CHAT ============ -->
   <div class="panel active" id="panel-chat">
-    <div id="header">
+    <div id="header" data-center-target="chat">
       <div id="logo-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
@@ -795,7 +804,7 @@
 
   <!-- ============ COLUMNA DERECHA: MANUALES ============ -->
   <div class="panel" id="panel-manuales">
-    <div class="panel-header">
+    <div class="panel-header" data-center-target="manuales">
       <p class="eyebrow">📂 Manuales</p>
       <h2>Documentación del sector</h2>
     </div>
@@ -857,6 +866,62 @@
       btn.classList.add("active");
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
     });
+  });
+
+  // ============================================================
+  // SLIDER CENTRAL (solo en desktop/tablet ancha, donde se ven las
+  // 3 columnas a la vez): al hacer clic en el encabezado de un panel
+  // lateral, ese panel pasa al centro con una animacion de
+  // deslizamiento real (tecnica FLIP: se mide la posicion antes y
+  // despues del cambio, y se anima la diferencia).
+  // ============================================================
+  const PANEL_KEYS = ["foro", "chat", "manuales"];
+  let panelOrder = { foro: 1, chat: 2, manuales: 3 };
+  let centerKey = "chat";
+
+  function isDesktopLayout() {
+    return window.matchMedia("(min-width: 1000px)").matches;
+  }
+
+  function centerPanel(key) {
+    if (!isDesktopLayout() || key === centerKey) return;
+
+    const panels = PANEL_KEYS.map((k) => document.getElementById("panel-" + k));
+
+    // FIRST: posicion actual de cada panel
+    const firstRects = panels.map((p) => p.getBoundingClientRect());
+
+    // Intercambia el "order" del panel clickeado con el que esta en el centro
+    const clickedOrder = panelOrder[key];
+    const centerOrder = panelOrder[centerKey];
+    panelOrder[key] = centerOrder;
+    panelOrder[centerKey] = clickedOrder;
+    centerKey = key;
+
+    panels.forEach((p, i) => {
+      p.style.order = panelOrder[PANEL_KEYS[i]];
+    });
+
+    // LAST: nueva posicion tras el cambio de orden
+    const lastRects = panels.map((p) => p.getBoundingClientRect());
+
+    // INVERT + PLAY: arranca cada panel visualmente donde estaba antes,
+    // y en el siguiente frame anima hacia su posicion real (0)
+    panels.forEach((p, i) => {
+      const dx = firstRects[i].left - lastRects[i].left;
+      if (dx === 0) return;
+      p.style.transition = "none";
+      p.style.transform = `translateX(${dx}px)`;
+      requestAnimationFrame(() => {
+        p.style.transition = "transform 0.45s cubic-bezier(.22,1,.36,1)";
+        p.style.transform = "translateX(0)";
+      });
+    });
+  }
+
+  document.querySelectorAll("[data-center-target]").forEach((el) => {
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => centerPanel(el.dataset.centerTarget));
   });
 
   // (loadManuales() e initForum() se llaman al final del script, una vez
