@@ -100,6 +100,23 @@
 
   .panel-header {
     padding: 24px 22px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .header-titles { min-width: 0; }
+  .center-hint {
+    display: none;
+    align-items: center; gap: 5px;
+    background: var(--brand-soft); color: var(--brand); border: none;
+    border-radius: var(--radius-full); padding: 6px 12px;
+    font-family: var(--font); font-size: 11.5px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0;
+    transition: background 0.18s var(--ease), color 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  .center-hint svg { width: 13px; height: 13px; }
+  .center-hint:hover { background: var(--brand); color: white; }
+  .center-hint:active { transform: scale(0.94); }
+  @media (min-width: 1000px) {
+    .center-hint.visible { display: inline-flex; }
   }
   .panel-header .eyebrow {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
@@ -110,27 +127,41 @@
 
   .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
-  @media (min-width: 1000px) {
-    .panel-header[data-center-target], #header[data-center-target] {
-      transition: background 0.18s var(--ease);
-    }
-    .panel-header[data-center-target]:hover, #header[data-center-target]:hover {
-      background: var(--surface-1);
-    }
-  }
-
   @media (max-width: 480px) {
     .panel { max-width: 100%; height: calc(100dvh - 110px); max-height: none; border-radius: var(--radius-lg); }
   }
 
-  /* ============ DESKTOP / TABLET ANCHO: 3 columnas simultaneas ============ */
+  /* ============ DESKTOP / TABLET ANCHO: carrusel 3D ============ */
   @media (min-width: 1000px) {
     #tabs { display: none !important; }
     #layout {
-      display: grid; grid-template-columns: 300px 460px 300px;
-      gap: 20px; justify-content: center; align-items: start;
+      position: relative;
+      height: 82vh; max-height: 800px;
+      perspective: 1900px;
     }
-    .panel { display: flex !important; max-width: none; margin: 0; height: 82vh; max-height: 800px; }
+    .panel {
+      display: flex !important;
+      position: absolute;
+      top: 0; left: 50%;
+      width: 420px; max-width: none; margin: 0;
+      height: 100%; max-height: none;
+      transition: transform 0.65s cubic-bezier(.22,1,.36,1), opacity 0.65s ease, box-shadow 0.5s ease;
+      will-change: transform;
+    }
+    /* El panel del medio: mas grande y "adelante" */
+    .panel.slot-center {
+      transform: translateX(-50%) translateZ(40px) rotateY(0deg) scale(1.04);
+      z-index: 3; opacity: 1;
+    }
+    /* Los panels de costado: mas chicos, girados y "atras" */
+    .panel.slot-left {
+      transform: translateX(calc(-50% - 400px)) translateZ(-160px) rotateY(28deg) scale(0.82);
+      z-index: 2; opacity: 0.72;
+    }
+    .panel.slot-right {
+      transform: translateX(calc(-50% + 400px)) translateZ(-160px) rotateY(-28deg) scale(0.82);
+      z-index: 2; opacity: 0.72;
+    }
   }
 
   #header {
@@ -742,9 +773,15 @@
 
   <!-- ============ COLUMNA IZQUIERDA: FORO DE IDEAS Y BUENAS PRACTICAS ============ -->
   <div class="panel" id="panel-foro">
-    <div class="panel-header" data-center-target="foro">
-      <p class="eyebrow">💡 Foro</p>
-      <h2>Ideas y Buenas Prácticas</h2>
+    <div class="panel-header">
+      <div class="header-titles">
+        <p class="eyebrow">💡 Foro</p>
+        <h2>Ideas y Buenas Prácticas</h2>
+      </div>
+      <button class="center-hint" data-center-target="foro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Centrar
+      </button>
     </div>
     <div class="panel-body">
 
@@ -782,7 +819,7 @@
 
   <!-- ============ COLUMNA CENTRAL: CHAT ============ -->
   <div class="panel active" id="panel-chat">
-    <div id="header" data-center-target="chat">
+    <div id="header">
       <div id="logo-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
@@ -790,6 +827,10 @@
         <div class="title">Asistente Tiendas Full</div>
         <div class="subtitle"><span id="status-dot-chat"></span>ACA · En línea</div>
       </div>
+      <button class="center-hint" data-center-target="chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Centrar
+      </button>
     </div>
     <div class="panel-body">
       <div id="messages"></div>
@@ -804,9 +845,15 @@
 
   <!-- ============ COLUMNA DERECHA: MANUALES ============ -->
   <div class="panel" id="panel-manuales">
-    <div class="panel-header" data-center-target="manuales">
-      <p class="eyebrow">📂 Manuales</p>
-      <h2>Documentación del sector</h2>
+    <div class="panel-header">
+      <div class="header-titles">
+        <p class="eyebrow">📂 Manuales</p>
+        <h2>Documentación del sector</h2>
+      </div>
+      <button class="center-hint" data-center-target="manuales">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Centrar
+      </button>
     </div>
     <div class="panel-body">
       <div id="manuales-list">
@@ -869,60 +916,79 @@
   });
 
   // ============================================================
-  // SLIDER CENTRAL (solo en desktop/tablet ancha, donde se ven las
-  // 3 columnas a la vez): al hacer clic en el encabezado de un panel
-  // lateral, ese panel pasa al centro con una animacion de
-  // deslizamiento real (tecnica FLIP: se mide la posicion antes y
-  // despues del cambio, y se anima la diferencia).
+  // CARRUSEL 3D (solo en desktop/tablet ancha, donde se ven los
+  // 3 paneles a la vez): cada panel tiene asignado un "slot"
+  // (izquierda / centro / derecha). El CSS ya define como se ve
+  // y se anima cada slot (escala, rotacion, profundidad), asi que
+  // ac\u00e1 solo hace falta reasignar que panel ocupa cada slot.
   // ============================================================
   const PANEL_KEYS = ["foro", "chat", "manuales"];
-  let panelOrder = { foro: 1, chat: 2, manuales: 3 };
+  let slots = { foro: "left", chat: "center", manuales: "right" };
   let centerKey = "chat";
+  let isAnimating = false;
 
   function isDesktopLayout() {
     return window.matchMedia("(min-width: 1000px)").matches;
   }
 
+  function applySlots() {
+    PANEL_KEYS.forEach((k) => {
+      const el = document.getElementById("panel-" + k);
+      el.classList.remove("slot-left", "slot-center", "slot-right");
+      el.classList.add("slot-" + slots[k]);
+    });
+  }
+
   function centerPanel(key) {
-    if (!isDesktopLayout() || key === centerKey) return;
+    if (!isDesktopLayout() || key === centerKey || isAnimating) return;
+    isAnimating = true;
 
-    const panels = PANEL_KEYS.map((k) => document.getElementById("panel-" + k));
-
-    // FIRST: posicion actual de cada panel
-    const firstRects = panels.map((p) => p.getBoundingClientRect());
-
-    // Intercambia el "order" del panel clickeado con el que esta en el centro
-    const clickedOrder = panelOrder[key];
-    const centerOrder = panelOrder[centerKey];
-    panelOrder[key] = centerOrder;
-    panelOrder[centerKey] = clickedOrder;
+    // El panel clickeado pasa al centro; el que estaba en el centro
+    // pasa a ocupar el slot que dejo libre el clickeado (izq. o der.).
+    // El tercer panel (el que no participo del cambio) no se toca.
+    const vacatedSlot = slots[key];
+    slots[centerKey] = vacatedSlot;
+    slots[key] = "center";
     centerKey = key;
 
-    panels.forEach((p, i) => {
-      p.style.order = panelOrder[PANEL_KEYS[i]];
-    });
+    applySlots();
+    updateCenterHints();
+    setTimeout(() => { isAnimating = false; }, 680);
+  }
 
-    // LAST: nueva posicion tras el cambio de orden
-    const lastRects = panels.map((p) => p.getBoundingClientRect());
-
-    // INVERT + PLAY: arranca cada panel visualmente donde estaba antes,
-    // y en el siguiente frame anima hacia su posicion real (0)
-    panels.forEach((p, i) => {
-      const dx = firstRects[i].left - lastRects[i].left;
-      if (dx === 0) return;
-      p.style.transition = "none";
-      p.style.transform = `translateX(${dx}px)`;
-      requestAnimationFrame(() => {
-        p.style.transition = "transform 0.45s cubic-bezier(.22,1,.36,1)";
-        p.style.transform = "translateX(0)";
+  // Muestra el boton "Centrar" en los dos paneles que NO estan en el centro,
+  // y lo oculta en el que si lo esta (asi queda visible siempre, no solo al
+  // pasar el mouse, y tambien funciona en pantallas tactiles).
+  function updateCenterHints() {
+    PANEL_KEYS.forEach((k) => {
+      document.querySelectorAll('.center-hint[data-center-target="' + k + '"]').forEach((btn) => {
+        btn.classList.toggle("visible", k !== centerKey);
       });
     });
   }
 
+  applySlots();
+
+  // Al pasar el mouse por un panel lateral, se centra solo despues de una
+  // pausa breve (asi un simple paso de largo con el mouse no dispara el
+  // cambio por accidente). El boton "Centrar" queda como respaldo para
+  // pantallas tactiles, donde no existe el hover.
+  let hoverTimer = null;
+  document.querySelectorAll(".panel").forEach((panel) => {
+    const key = panel.id.replace("panel-", "");
+    panel.addEventListener("mouseenter", () => {
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => centerPanel(key), 220);
+    });
+    panel.addEventListener("mouseleave", () => {
+      clearTimeout(hoverTimer);
+    });
+  });
+
   document.querySelectorAll("[data-center-target]").forEach((el) => {
-    el.style.cursor = "pointer";
     el.addEventListener("click", () => centerPanel(el.dataset.centerTarget));
   });
+  updateCenterHints();
 
   // (loadManuales() e initForum() se llaman al final del script, una vez
   // que todas sus funciones y variables ya estan declaradas)
