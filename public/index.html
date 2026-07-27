@@ -872,26 +872,10 @@
 <script>
   const FORMSPREE_URL = "https://formspree.io/f/mojgwokn";
 
-  const MANUALES = [
-    {
-      titulo: "Manual Full 2026",
-      descripcion: "Versión 6.4 · Diciembre 2025 · Original",
-      archivo: "manuales/manual-full-2026.pdf",
-      tamano: "23 MB",
-    },
-    {
-      titulo: "Carpeta Bromatología",
-      descripcion: "Versión 2.0 · Octubre 2020",
-      archivo: "manuales/carpeta-bromatologia.pdf",
-      tamano: "460 KB",
-    },
-    {
-      titulo: "Ciclo de Servicio - Venta en Salón",
-      descripcion: "Infografía del ciclo completo",
-      archivo: "manuales/ciclo-de-servicios-full.pdf",
-      tamano: "890 KB",
-    },
-  ];
+  // Reemplazá esta URL por el link para compartir de tu carpeta de OneDrive
+  // (clic derecho en la carpeta en OneDrive -> Compartir -> Copiar vínculo).
+  // Todos los manuales viven ahí ahora, no en este repositorio.
+  const ONEDRIVE_FOLDER_URL = "https://TU-EMPRESA-onedrive.com/TU-CARPETA-AQUI";
 
   function icon(name) {
     const icons = {
@@ -996,28 +980,27 @@
   let manualesLoaded = false;
   function loadManuales() {
     if (manualesLoaded) return;
+    manualesLoaded = true;
     const content = document.getElementById("manuales-content");
 
-    content.innerHTML = Array(2).fill(
+    content.innerHTML = Array(1).fill(
       '<div class="skeleton-card"><div class="skeleton-box skeleton-icon"></div>' +
       '<div class="skeleton-lines"><div class="skeleton-box skeleton-line w60"></div>' +
       '<div class="skeleton-box skeleton-line w35"></div></div></div>'
     ).join("");
 
     setTimeout(() => {
-      manualesLoaded = true;
-      if (MANUALES.length === 0) {
-        content.innerHTML =
-          '<div class="empty-state">' + icon("book-x") + '<p>Todavía no hay manuales cargados.</p></div>';
-        return;
-      }
-      content.innerHTML = MANUALES.map((m) =>
-        '<div class="doc-card"><div class="doc-icon">' + icon("file") + '</div>' +
-        '<div class="doc-info"><p class="doc-title">' + m.titulo + '</p>' +
-        '<div class="doc-meta">' + m.descripcion + ' · ' + m.tamano + '</div></div>' +
-        '<a class="doc-download" href="' + m.archivo + '" download aria-label="Descargar ' + m.titulo + '">' + icon("download") + '</a></div>'
-      ).join("");
-    }, 450);
+      content.innerHTML =
+        '<div class="doc-card" style="align-items:flex-start;">' +
+        '<div class="doc-icon">' + icon("file") + '</div>' +
+        '<div class="doc-info">' +
+        '<p class="doc-title">Todos los manuales</p>' +
+        '<div class="doc-meta">Manual Full, Carpeta Bromatología y Ciclo de Servicio</div>' +
+        '</div></div>' +
+        '<a class="btn-full" style="margin-top:12px; text-decoration:none;" href="' + ONEDRIVE_FOLDER_URL + '" target="_blank" rel="noopener">' +
+        icon("download") + ' Abrir carpeta de Manuales</a>' +
+        '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin-top:10px;">Se abre en OneDrive, en una pestaña nueva.</p>';
+    }, 350);
   }
 
 
