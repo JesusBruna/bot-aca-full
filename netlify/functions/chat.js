@@ -205,13 +205,14 @@ exports.handler = async function (event) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-  const isFirstMessage = messages.length <= 1;
 
-  // Solo usamos la cache para la PRIMERA pregunta de una conversacion (sin
-  // historial previo), para no arriesgarnos a devolver una respuesta vieja
-  // que no tiene en cuenta el contexto de una charla en curso.
+  // La cache se consulta para CUALQUIER pregunta, no solo la primera de la
+  // conversacion. El riesgo de "perder contexto" es bajo: para que una
+  // pregunta de seguimiento use mal la cache, tendria que coincidir texto
+  // por texto (una vez normalizado) con una pregunta ya guardada, lo cual
+  // es poco probable si realmente depende del contexto previo.
   const normalized = lastUserMessage ? normalizeQuestion(lastUserMessage.content) : "";
-  if (isFirstMessage && normalized) {
+  if (normalized) {
     const cached = await getCachedAnswer(normalized);
     if (cached) {
       bumpHitCount(normalized); // no bloqueante
@@ -258,10 +259,9 @@ exports.handler = async function (event) {
       .join("\n")
       .trim();
 
-    // Guardamos en cache solo si fue la primera pregunta de la charla y hubo
-    // una respuesta real (no vacia). Se guarda incluso NO_ENCONTRADO: la
-    // proxima vez que pregunten lo mismo, se ahorra la llamada igual.
-    if (isFirstMessage && normalized && text) {
+    // Guardamos en cache cualquier respuesta real (no vacia), sin importar
+    // si fue la primera pregunta o una posterior en la misma charla.
+    if (normalized && text) {
       saveCachedAnswer(normalized, lastUserMessage.content, text, topChunks.map((c) => c.page)); // no bloqueante
     }
 
