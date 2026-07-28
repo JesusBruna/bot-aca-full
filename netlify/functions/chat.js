@@ -53,7 +53,7 @@ function scoreChunk(normText, words) {
   return score;
 }
 
-function getTopChunks(query, k = 7) {
+function getTopChunks(query, k = 4) {
   const words = tokenize(query);
   if (words.length === 0) return [];
   const scored = KB_CHUNKS.map((c, i) => ({
@@ -104,6 +104,89 @@ function buildSystemPrompt(chunks) {
   return BASE_INSTRUCTIONS + "\n\nFRAGMENTOS DEL MANUAL:\n\n" + context;
 }
 
+// ============================================================
+// CACHE DE PREGUNTAS FRECUENTES (Supabase)
+// Antes de llamar a Claude, se chequea si esa misma pregunta
+// (normalizada) ya fue respondida antes. Si es asi, se devuelve
+// la respuesta guardada sin gastar nada de la API. Si no, se
+// llama a Claude normalmente y se guarda la respuesta para la
+// proxima vez que alguien pregunte lo mismo.
+// ============================================================
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+function normalizeQuestion(q) {
+  return q
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:"'()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function getCachedAnswer(normalized) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !normalized) return null;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/faq_cache?question_normalized=eq.${encodeURIComponent(normalized)}&select=*`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0] || null;
+  } catch (e) {
+    console.error("Error leyendo cache:", e.message);
+    return null;
+  }
+}
+
+async function saveCachedAnswer(normalized, original, answer, sources) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !normalized || !answer) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/faq_cache`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify([
+        {
+          question_normalized: normalized,
+          question_original: original,
+          answer,
+          sources,
+          updated_at: new Date().toISOString(),
+        },
+      ]),
+    });
+  } catch (e) {
+    console.error("Error guardando en cache:", e.message);
+  }
+}
+
+async function bumpHitCount(normalized) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/increment_faq_hit`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ q: normalized }),
+      }
+    );
+  } catch (e) {
+    // no es critico si falla, no bloquea la respuesta
+  }
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: JSON.stringify({ error: "Metodo no permitido" }) };
@@ -122,12 +205,30 @@ exports.handler = async function (event) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-  const topChunks = getTopChunks(lastUserMessage ? lastUserMessage.content : "", 7);
+  const isFirstMessage = messages.length <= 1;
+
+  // Solo usamos la cache para la PRIMERA pregunta de una conversacion (sin
+  // historial previo), para no arriesgarnos a devolver una respuesta vieja
+  // que no tiene en cuenta el contexto de una charla en curso.
+  const normalized = lastUserMessage ? normalizeQuestion(lastUserMessage.content) : "";
+  if (isFirstMessage && normalized) {
+    const cached = await getCachedAnswer(normalized);
+    if (cached) {
+      bumpHitCount(normalized); // no bloqueante
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ reply: cached.answer, sources: cached.sources || [], fromCache: true }),
+      };
+    }
+  }
+
+  const topChunks = getTopChunks(lastUserMessage ? lastUserMessage.content : "", 4);
   const systemPrompt = buildSystemPrompt(topChunks);
 
-  // Solo mandamos los ultimos 4 mensajes (2 idas y vueltas): suficiente para
-  // sostener una pregunta de seguimiento simple, sin pagar por charlas largas.
-  const trimmedMessages = messages.slice(-4);
+  // Solo mandamos los ultimos 2 mensajes (la pregunta actual + la respuesta
+  // anterior): el flujo de confirmacion/derivacion ya lo maneja el frontend,
+  // asi que casi no se pierde continuidad real por acortar mas el historial.
+  const trimmedMessages = messages.slice(-2);
 
   try {
     const apiRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -139,7 +240,7 @@ exports.handler = async function (event) {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
+        max_tokens: 250,
         system: systemPrompt,
         messages: trimmedMessages,
       }),
@@ -156,6 +257,13 @@ exports.handler = async function (event) {
       .map((b) => b.text)
       .join("\n")
       .trim();
+
+    // Guardamos en cache solo si fue la primera pregunta de la charla y hubo
+    // una respuesta real (no vacia). Se guarda incluso NO_ENCONTRADO: la
+    // proxima vez que pregunten lo mismo, se ahorra la llamada igual.
+    if (isFirstMessage && normalized && text) {
+      saveCachedAnswer(normalized, lastUserMessage.content, text, topChunks.map((c) => c.page)); // no bloqueante
+    }
 
     return {
       statusCode: 200,
