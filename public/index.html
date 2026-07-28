@@ -344,6 +344,39 @@
   .btn-full:hover { background: var(--brand-hover); }
   .btn-full svg { width: 15px; height: 15px; }
 
+  #suggestions-box {
+    position: relative;
+    padding: 0 14px;
+    flex-shrink: 0;
+  }
+  .suggestions-list {
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 8px;
+    overflow: hidden;
+    animation: rise 0.18s var(--ease);
+  }
+  .suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 13px;
+    font-size: 13px;
+    color: var(--ink-700);
+    cursor: pointer;
+    border-bottom: 1px solid var(--surface-2);
+    transition: background 0.15s var(--ease);
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: var(--brand-soft); color: var(--brand); }
+  .suggestion-item svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--ink-300); }
+  .suggestion-item:hover svg { color: var(--brand); }
+  .suggestion-item .s-text {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
   #inputbar {
     border-top: 1px solid var(--border);
     background: var(--surface-0);
@@ -834,6 +867,7 @@
     </div>
     <div class="panel-body">
       <div id="messages"></div>
+      <div id="suggestions-box"></div>
       <div id="inputbar">
         <input id="input" type="text" placeholder="Escribí tu consulta..." autocomplete="off" />
         <button id="send" aria-label="Enviar">
@@ -875,7 +909,7 @@
   // Reemplazá esta URL por el link para compartir de tu carpeta de OneDrive
   // (clic derecho en la carpeta en OneDrive -> Compartir -> Copiar vínculo).
   // Todos los manuales viven ahí ahora, no en este repositorio.
-  const ONEDRIVE_FOLDER_URL = "https://acacloud-my.sharepoint.com/:f:/g/personal/brunjesu_aca_org_ar/IgByLeNRBH93Rq-sQJEG32qRAbaJtD8q0QUnRElzFt0Zaa0?e=geZDN0";
+  const ONEDRIVE_FOLDER_URL = "https://TU-EMPRESA-onedrive.com/TU-CARPETA-AQUI";
 
   function icon(name) {
     const icons = {
@@ -1337,6 +1371,16 @@
     });
   }
 
+  function deleteComment(postId, commentId) {
+    showConfirm("¿Eliminar este comentario? Esta acción no se puede deshacer.", async () => {
+      const post = await ForumStore.getPost(postId);
+      post.comments = post.comments.filter((c) => c.id !== commentId);
+      await ForumStore.upsertPost(post);
+      showToast("Comentario eliminado");
+      renderPostDetail(postId);
+    });
+  }
+
   // ---------- COMENTARIOS ----------
   async function submitComment(postId) {
     ensureForumUser(async () => {
@@ -1366,6 +1410,7 @@
       .reverse()
       .map((c) => {
         const liked = forumUser && c.likes.includes(forumUser.id);
+        const isOwnComment = forumUser && forumUser.name === c.author;
         return (
           '<div class="comment-item">' +
           avatarHTML(c.author) +
@@ -1379,6 +1424,11 @@
           '<svg viewBox="0 0 24 24" fill="' + (liked ? "currentColor" : "none") + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>' +
           (c.likes.length > 0 ? c.likes.length : "Me gusta") +
           "</button>" +
+          (isOwnComment
+            ? '<button onclick="deleteComment(\'' + post.id + "','" + c.id + '\')" style="color:#d63b3b;">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+              "Eliminar</button>"
+            : "") +
           '<span class="comment-date">' + timeAgo(c.date) + "</span>" +
           "</div></div></div>"
         );
@@ -1821,11 +1871,81 @@
     sendBtn.disabled = false;
   }
 
-  sendBtn.onclick = () => sendMessage(inputEl.value);
+  sendBtn.onclick = () => { hideSuggestions(); sendMessage(inputEl.value); };
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !loading && stage !== "contact") {
+      hideSuggestions();
       sendMessage(inputEl.value);
     }
+  });
+
+  // ============================================================
+  // SUGERENCIAS DE PREGUNTAS FRECUENTES (autocompletar desde la cache)
+  // Mientras el cliente escribe, se busca en la tabla faq_cache de
+  // Supabase (lectura publica, mismo mecanismo que usa el Foro) y se
+  // muestran hasta 4 preguntas ya guardadas que coincidan. Si el cliente
+  // elige una, se manda tal cual esta guardada -> mayor probabilidad de
+  // pegarle a la cache y responder al costo minimo.
+  // ============================================================
+  const suggestionsBox = document.getElementById("suggestions-box");
+  let suggestTimer = null;
+
+  function hideSuggestions() {
+    suggestionsBox.innerHTML = "";
+  }
+
+  async function fetchSuggestions(text) {
+    if (!supabaseClient || text.trim().length < 3) {
+      hideSuggestions();
+      return;
+    }
+    try {
+      const { data, error } = await supabaseClient
+        .from("faq_cache")
+        .select("question_original")
+        .ilike("question_original", "%" + text.trim() + "%")
+        .limit(4);
+      if (error || !data || data.length === 0) {
+        hideSuggestions();
+        return;
+      }
+      renderSuggestions(data.map((r) => r.question_original));
+    } catch (e) {
+      hideSuggestions();
+    }
+  }
+
+  function renderSuggestions(questions) {
+    const searchIcon =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+    suggestionsBox.innerHTML =
+      '<div class="suggestions-list">' +
+      questions
+        .map(
+          (q) =>
+            '<div class="suggestion-item" data-question="' + escapeHtml(q) + '">' +
+            searchIcon +
+            '<span class="s-text">' + escapeHtml(q) + "</span></div>"
+        )
+        .join("") +
+      "</div>";
+    suggestionsBox.querySelectorAll(".suggestion-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const q = el.dataset.question;
+        hideSuggestions();
+        sendMessage(q);
+      });
+    });
+  }
+
+  inputEl.addEventListener("input", () => {
+    clearTimeout(suggestTimer);
+    const text = inputEl.value;
+    suggestTimer = setTimeout(() => fetchSuggestions(text), 250);
+  });
+  inputEl.addEventListener("blur", () => {
+    // pequeño delay para que el click en una sugerencia alcance a dispararse
+    setTimeout(hideSuggestions, 150);
   });
 
   addBubble("bot", "Hola, soy el asistente de Tiendas Full de ACA, entrenado con el Manual Full completo. Preguntame lo que necesites.");
