@@ -115,14 +115,38 @@ function buildSystemPrompt(chunks) {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+const FAQ_STOPWORDS = new Set([
+  "por","favor","porfa","quisiera","quiero","necesito","podrias","podes","puedes",
+  "decime","decinos","dime","sabes","sabe","me","te","nos","les","le","un","una",
+  "unos","unas","el","la","los","las","de","del","al","a","en","con","sobre","y",
+  "o","que","cual","cuales","es","son","hay","tiene","tienen","se","su","sus",
+  "para","como","cuanto","cuanta","cuantos","cuantas","cuando","donde","hola",
+  "buenas","buenos","dias","tardes","noches","gracias","desde","hasta","este",
+  "esta","estos","estas","mi","tu","yo","vos","usted"
+]);
+
 function normalizeQuestion(q) {
-  return q
+  const cleaned = q
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[¿?¡!.,;:"'()]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+
+  // Bag-of-words: se sacan saludos y palabras de relleno/cortesia, y se
+  // ordenan alfabeticamente las palabras que quedan. Asi, preguntas con el
+  // mismo contenido pero distinto orden o fraseo ("cuanto dura la leche
+  // espumada" vs "por favor decime cuanto tiempo dura la leche ya
+  // espumada") terminan generando la MISMA clave de cache.
+  const words = cleaned
+    .split(" ")
+    .filter((w) => w.length >= 3 && !FAQ_STOPWORDS.has(w))
+    .sort();
+
+  // Si despues de filtrar quedan muy pocas palabras (pregunta muy corta o
+  // ambigua), usamos el texto limpio tal cual para no perder precision.
+  return words.length >= 2 ? words.join(" ") : cleaned;
 }
 
 async function getCachedAnswer(normalized) {
