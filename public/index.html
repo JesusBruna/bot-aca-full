@@ -906,10 +906,9 @@
 <script>
   const FORMSPREE_URL = "https://formspree.io/f/mojgwokn";
 
-  // Reemplazá esta URL por el link para compartir de tu carpeta de OneDrive
-  // (clic derecho en la carpeta en OneDrive -> Compartir -> Copiar vínculo).
-  // Todos los manuales viven ahí ahora, no en este repositorio.
-  const ONEDRIVE_FOLDER_URL = "https://TU-EMPRESA-onedrive.com/TU-CARPETA-AQUI";
+  // Carpeta de manuales (Google Drive) donde vive toda la documentación,
+  // no en este repositorio.
+  const ONEDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/17qYFh6wuivFnTja2nWuu4-worritdRSP";
 
   function icon(name) {
     const icons = {
@@ -1033,7 +1032,7 @@
         '</div></div>' +
         '<a class="btn-full" style="margin-top:12px; text-decoration:none;" href="' + ONEDRIVE_FOLDER_URL + '" target="_blank" rel="noopener">' +
         icon("download") + ' Abrir carpeta de Manuales</a>' +
-        '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin-top:10px;">Se abre en OneDrive, en una pestaña nueva.</p>';
+        '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin-top:10px;">Se abre en Google Drive, en una pestaña nueva.</p>';
     }, 350);
   }
 
