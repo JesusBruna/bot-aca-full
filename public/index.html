@@ -906,9 +906,11 @@
 <script>
   const FORMSPREE_URL = "https://formspree.io/f/mojgwokn";
 
-  // Carpeta de manuales (Google Drive) donde vive toda la documentación,
-  // no en este repositorio.
-  const ONEDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/17qYFh6wuivFnTja2nWuu4-worritdRSP";
+  // Reemplazá esta URL por el link real para compartir de tu carpeta de
+  // OneDrive (clic derecho en la carpeta -> Compartir -> Copiar vínculo).
+  const ONEDRIVE_FOLDER_URL = "https://acacloud-my.sharepoint.com/:f:/g/personal/brunjesu_aca_org_ar/IgC_e1ENZ31bR5GnOdmcXHjZARxaVcf0AgEU4O0BPP7kVNI?e=gf1qX9";
+  // Carpeta de Google Drive con renders y novedades.
+  const GDRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/17qYFh6wuivFnTja2nWuu4-worritdRSP";
 
   function icon(name) {
     const icons = {
@@ -1027,11 +1029,21 @@
         '<div class="doc-card" style="align-items:flex-start;">' +
         '<div class="doc-icon">' + icon("file") + '</div>' +
         '<div class="doc-info">' +
-        '<p class="doc-title">Todos los manuales</p>' +
-        '<div class="doc-meta">Manual Full, Carpeta Bromatología y Ciclo de Servicio</div>' +
+        '<p class="doc-title">Manuales de tienda</p>' +
+        '<div class="doc-meta">Manual Full, Bromatología, Ciclo de Servicio y más</div>' +
         '</div></div>' +
         '<a class="btn-full" style="margin-top:12px; text-decoration:none;" href="' + ONEDRIVE_FOLDER_URL + '" target="_blank" rel="noopener">' +
         icon("download") + ' Abrir carpeta de Manuales</a>' +
+        '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin:8px 0 20px;">Se abre en OneDrive, en una pestaña nueva.</p>' +
+
+        '<div class="doc-card" style="align-items:flex-start;">' +
+        '<div class="doc-icon">' + icon("file") + '</div>' +
+        '<div class="doc-info">' +
+        '<p class="doc-title">Renders y novedades</p>' +
+        '<div class="doc-meta">Imágenes y comunicados actualizados</div>' +
+        '</div></div>' +
+        '<a class="btn-full" style="margin-top:12px; text-decoration:none;" href="' + GDRIVE_FOLDER_URL + '" target="_blank" rel="noopener">' +
+        icon("download") + ' Abrir carpeta de Renders</a>' +
         '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin-top:10px;">Se abre en Google Drive, en una pestaña nueva.</p>';
     }, 350);
   }
