@@ -1747,8 +1747,8 @@
     const div = document.createElement("div");
     div.className = "actions dynamic";
     div.innerHTML =
-      '<button class="chip" id="confirm-yes">' + icon("check") + ' Sí, gracias</button>' +
-      '<button class="chip" id="confirm-no">' + icon("x") + ' No</button>';
+      '<button class="chip" id="confirm-yes">' + icon("check") + ' Sí, me sirvió</button>' +
+      '<button class="chip" id="confirm-no">' + icon("x") + ' No, necesito más ayuda</button>';
     messagesEl.appendChild(div);
     scrollDown();
     document.getElementById("confirm-yes").onclick = () => handleConfirm(true);
@@ -1760,8 +1760,8 @@
     const div = document.createElement("div");
     div.className = "actions dynamic";
     div.innerHTML =
-      '<button class="chip primary" id="esc-yes">' + icon("user-plus") + ' Sí, derivame</button>' +
-      '<button class="chip" id="esc-no">' + icon("x") + ' No, gracias</button>';
+      '<button class="chip primary" id="esc-yes">' + icon("user-plus") + ' Sí, pasá mi consulta</button>' +
+      '<button class="chip" id="esc-no">' + icon("x") + ' No hace falta</button>';
     messagesEl.appendChild(div);
     scrollDown();
     document.getElementById("esc-yes").onclick = () => handleOfferEscalate(true);
@@ -1809,13 +1809,14 @@
       if (!reply || reply.includes("NO_ENCONTRADO")) {
         history.push({ role: "assistant", content: reply || "NO_ENCONTRADO" });
         setLoading(false);
-        addBubble("bot", "No tengo esa información en el manual. ¿Querés que derive tu consulta a una persona del equipo?");
+        addBubble("bot", "Esta consulta no la encontré en el manual, así que no quiero darte un dato que no esté confirmado. ¿Querés que le pase tu pregunta a una persona del equipo de Tiendas Full para que te responda? Si aceptás, te pido un contacto y ellos se comunican con vos.");
         stage = "offer_escalate";
         showOfferEscalate();
       } else {
         history.push({ role: "assistant", content: reply });
         setLoading(false);
         addBubble("bot", reply);
+        addBubble("bot", "¿Esto responde tu consulta?");
         stage = "confirm";
         showConfirmButtons();
       }
@@ -1829,12 +1830,12 @@
   function handleConfirm(resolved) {
     clearDynamic();
     if (resolved) {
-      addBubble("user", "Sí, gracias");
+      addBubble("user", "Sí, me sirvió");
       addBubble("bot", "¡Genial! Si tenés otra consulta, escribime cuando quieras.");
       stage = "idle";
     } else {
-      addBubble("user", "No");
-      addBubble("bot", "Entendido, te derivo con una persona del equipo. ¿Me pasás tu nombre y un teléfono o email de contacto?");
+      addBubble("user", "No, necesito más ayuda");
+      addBubble("bot", "Entiendo. ¿Querés que le pase tu consulta a una persona del equipo de Tiendas Full? Dejame tu nombre y un teléfono o email, y se comunican con vos.");
       stage = "contact";
       showContactForm();
     }
@@ -1843,12 +1844,12 @@
   function handleOfferEscalate(accept) {
     clearDynamic();
     if (accept) {
-      addBubble("user", "Sí, derivame");
-      addBubble("bot", "Perfecto. ¿Me pasás tu nombre y un teléfono o email de contacto?");
+      addBubble("user", "Sí, pasá mi consulta");
+      addBubble("bot", "Perfecto. Dejame tu nombre y un teléfono o email, y le hago llegar tu consulta al equipo de Tiendas Full para que te contacten.");
       stage = "contact";
       showContactForm();
     } else {
-      addBubble("user", "No, gracias");
+      addBubble("user", "No hace falta");
       addBubble("bot", "Sin problema. Si tenés otra consulta, escribime cuando quieras.");
       stage = "idle";
     }
@@ -1876,7 +1877,7 @@
 
     clearDynamic();
     addBubble("user", name + " - " + phone);
-    addBubble("bot", "Gracias, ya derivé tu consulta al equipo. Te van a contactar a la brevedad. ¿Necesitás algo más?");
+    addBubble("bot", "¡Listo! Ya le pasé tu consulta al equipo de Tiendas Full junto con tu contacto. Se van a comunicar con vos a la brevedad. ¿Necesitás algo más?");
     stage = "idle";
     inputEl.disabled = false;
     sendBtn.disabled = false;
