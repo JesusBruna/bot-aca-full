@@ -1806,7 +1806,14 @@
       const data = await res.json();
       const reply = (data.reply || "").trim();
 
-      if (!reply || reply.includes("NO_ENCONTRADO")) {
+      if (reply && reply.includes("FUERA_DE_TEMA")) {
+        // Pregunta totalmente ajena al negocio: se reencauza amablemente,
+        // sin ofrecer derivación (el equipo no responde "qué día es hoy").
+        history.push({ role: "assistant", content: reply });
+        setLoading(false);
+        addBubble("bot", "Soy el asistente de Tiendas Full, así que puedo ayudarte con temas de las tiendas y las estaciones de servicio (productos, cafetería, comidas, pedidos, procedimientos, etc.). ¿Sobre qué de eso puedo ayudarte?");
+        stage = "idle";
+      } else if (!reply || reply.includes("NO_ENCONTRADO")) {
         history.push({ role: "assistant", content: reply || "NO_ENCONTRADO" });
         setLoading(false);
         addBubble("bot", "Esta consulta no la encontré en el manual, así que no quiero darte un dato que no esté confirmado. ¿Querés que le pase tu pregunta a una persona del equipo de Tiendas Full para que te responda? Si aceptás, te pido un contacto y ellos se comunican con vos.");
