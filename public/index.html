@@ -439,6 +439,24 @@
   .manuales-intro h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .manuales-intro p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
 
+  #novedades-search-wrap { padding: 0 2px 10px; flex-shrink: 0; }
+  #novedades-search {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: var(--radius-full);
+    padding: 9px 15px; font-size: 13px; font-family: var(--font);
+    outline: none; background: var(--surface-0); color: var(--ink-900);
+    transition: border-color 0.18s var(--ease);
+  }
+  #novedades-search:focus { border-color: var(--brand); }
+  .novedad-card.atenuada { opacity: 0.7; }
+  .novedad-estado {
+    display: inline-block; font-size: 9.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; padding: 2px 7px; border-radius: var(--radius-full); margin-right: 6px;
+    vertical-align: middle;
+  }
+  .novedad-estado.vencida { background: #fdeaea; color: #c0392b; }
+  .novedad-estado.futura { background: #eaf2fd; color: #2f6fed; }
+
   #novedades-content {
     flex: 1;
     min-height: 0;
@@ -981,6 +999,9 @@
       </button>
     </div>
     <div class="panel-body">
+      <div id="novedades-search-wrap">
+        <input id="novedades-search" type="text" placeholder="Buscar en todas las novedades (incluye vencidas)..." autocomplete="off" />
+      </div>
       <div id="novedades-content"></div>
     </div>
   </div>
@@ -1219,17 +1240,20 @@
     return html;
   }
 
-  async function loadNovedades() {
+  async function loadNovedades(termino) {
     const content = document.getElementById("novedades-content");
     if (!content) return;
+    const busqueda = (termino || "").trim().toLowerCase();
 
-    // Skeleton de carga
-    content.innerHTML = Array(3).fill(
-      '<div class="skeleton-card" style="display:block;padding:14px;">' +
-      '<div class="skeleton-box skeleton-line w35" style="margin-bottom:8px;"></div>' +
-      '<div class="skeleton-box skeleton-line w60" style="margin-bottom:8px;"></div>' +
-      '<div class="skeleton-box skeleton-line" style="width:90%;"></div></div>'
-    ).join("");
+    // Skeleton de carga (solo si no es una búsqueda en vivo, para no parpadear)
+    if (!busqueda) {
+      content.innerHTML = Array(3).fill(
+        '<div class="skeleton-card" style="display:block;padding:14px;">' +
+        '<div class="skeleton-box skeleton-line w35" style="margin-bottom:8px;"></div>' +
+        '<div class="skeleton-box skeleton-line w60" style="margin-bottom:8px;"></div>' +
+        '<div class="skeleton-box skeleton-line" style="width:90%;"></div></div>'
+      ).join("");
+    }
 
     if (!supabaseClient) {
       content.innerHTML = '<div class="empty-state">' + icon("book-x") +
@@ -1242,36 +1266,54 @@
         .from("novedades")
         .select("*")
         .order("fecha_recibido", { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) throw error;
 
-      // Filtro de vigencia: solo mostramos las novedades que hoy están dentro
-      // de su ventana. Si fecha_inicio está vacía, vale desde siempre; si
-      // fecha_fin está vacía, no vence nunca. Pasada la fecha_fin, la novedad
-      // se oculta sola (no se borra de la base, solo deja de mostrarse).
       const hoy = new Date().toISOString().slice(0, 10); // AAAA-MM-DD
-      const vigentes = (data || []).filter((n) => {
-        const desde = n.fecha_inicio || null;
-        const hasta = n.fecha_fin || null;
-        if (desde && hoy < desde) return false; // todavía no arrancó
-        if (hasta && hoy > hasta) return false; // ya venció
-        return true;
-      });
 
-      if (vigentes.length === 0) {
+      // Marca el estado de vigencia de cada novedad respecto de hoy.
+      function estadoVigencia(n) {
+        if (n.fecha_inicio && hoy < n.fecha_inicio) return "futura";
+        if (n.fecha_fin && hoy > n.fecha_fin) return "vencida";
+        return "vigente";
+      }
+
+      let lista;
+      if (busqueda) {
+        // Al BUSCAR: se ven TODAS las que coincidan (vigentes, vencidas y
+        // futuras), por título, cuerpo o categoría.
+        lista = (data || []).filter((n) => {
+          const txt = ((n.titulo || "") + " " + (n.cuerpo || "") + " " + (n.categoria || "")).toLowerCase();
+          return txt.includes(busqueda);
+        });
+      } else {
+        // Vista normal: solo las vigentes hoy.
+        lista = (data || []).filter((n) => estadoVigencia(n) === "vigente");
+      }
+
+      if (lista.length === 0) {
         content.innerHTML = '<div class="empty-state">' + icon("book-x") +
-          "<p>Todavía no hay novedades cargadas.<br/>Van a aparecer acá automáticamente.</p></div>";
+          (busqueda
+            ? "<p>No se encontraron novedades para tu búsqueda.</p></div>"
+            : "<p>Todavía no hay novedades cargadas.<br/>Van a aparecer acá automáticamente.</p></div>");
         return;
       }
 
-      content.innerHTML = vigentes.map((n, idx) => {
+      content.innerHTML = lista.map((n, idx) => {
         const cuerpoLargo = (n.cuerpo || "").length > 220;
+        const estado = estadoVigencia(n);
+        // Etiqueta de estado (solo se muestra al buscar, para las no vigentes)
+        let badge = "";
+        if (busqueda && estado !== "vigente") {
+          const txt = estado === "vencida" ? "Vencida" : "Programada";
+          badge = '<span class="novedad-estado ' + estado + '">' + txt + "</span>";
+        }
         return (
-          '<div class="novedad-card' + (n.destacada ? " destacada" : "") + '">' +
+          '<div class="novedad-card' + (n.destacada ? " destacada" : "") + (estado !== "vigente" ? " atenuada" : "") + '">' +
           '<div class="novedad-top">' +
           '<span class="novedad-cat">' + escapeHtml(n.categoria || "General") + "</span>" +
-          '<span class="novedad-fecha">' + fmtFechaNovedad(n.fecha_recibido) + "</span>" +
+          '<span class="novedad-fecha">' + badge + fmtFechaNovedad(n.fecha_recibido) + "</span>" +
           "</div>" +
           '<p class="novedad-titulo">' + escapeHtml(n.titulo || "(sin título)") + "</p>" +
           '<div class="novedad-cuerpo' + (cuerpoLargo ? " clamp" : "") + '" id="nov-body-' + idx + '">' +
@@ -2317,6 +2359,18 @@
   // Botón para abrir el formulario de carga de novedades
   const btnCargarNov = document.getElementById("btn-cargar-novedad");
   if (btnCargarNov) btnCargarNov.addEventListener("click", abrirFormNovedad);
+
+  // Buscador de novedades: al escribir, busca en TODAS (incluye vencidas y
+  // futuras). Al vaciar el campo, vuelve a la vista normal (solo vigentes).
+  const novSearch = document.getElementById("novedades-search");
+  if (novSearch) {
+    let novSearchTimer = null;
+    novSearch.addEventListener("input", () => {
+      clearTimeout(novSearchTimer);
+      const val = novSearch.value;
+      novSearchTimer = setTimeout(() => loadNovedades(val), 250);
+    });
+  }
 </script>
 
 </body>
