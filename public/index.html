@@ -470,7 +470,13 @@
   }
   .novedad-fecha { font-size: 11px; color: var(--ink-500); white-space: nowrap; }
   .novedad-titulo { font-size: 14px; font-weight: 700; margin: 0 0 5px; line-height: 1.35; }
-  .novedad-cuerpo { font-size: 13px; color: var(--ink-700); line-height: 1.5; white-space: pre-wrap; }
+  .novedad-cuerpo { font-size: 13px; color: var(--ink-700); line-height: 1.5; }
+  .nov-tabla-wrap { overflow-x: auto; margin: 8px 0; border-radius: 8px; border: 1px solid var(--border); }
+  .nov-tabla { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+  .nov-tabla th, .nov-tabla td { padding: 6px 9px; text-align: left; border-bottom: 1px solid var(--surface-2); white-space: nowrap; }
+  .nov-tabla th { background: var(--brand-soft); color: var(--brand); font-weight: 700; position: sticky; top: 0; }
+  .nov-tabla tr:last-child td { border-bottom: none; }
+  .nov-tabla td { color: var(--ink-700); }
   .novedad-cuerpo.clamp { max-height: 84px; overflow: hidden; position: relative; }
   .novedad-cuerpo.clamp::after {
     content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 32px;
@@ -1174,6 +1180,45 @@
     }
   }
 
+  // Convierte el texto de una novedad en HTML, detectando automáticamente
+  // tablas pegadas desde Excel o mails. Las tablas usan TABULACIONES (\t) para
+  // separar columnas: si una línea tiene tabs, se arma una <table>; las líneas
+  // normales quedan como párrafos. Así, cuando pegás una tabla, se ve ordenada.
+  function formatearCuerpoNovedad(texto) {
+    const lineas = (texto || "").split("\n");
+    let html = "";
+    let filasTabla = [];
+
+    function cerrarTabla() {
+      if (filasTabla.length === 0) return;
+      // La primera fila con tabs se toma como encabezado
+      let t = '<div class="nov-tabla-wrap"><table class="nov-tabla">';
+      filasTabla.forEach((celdas, i) => {
+        const tag = i === 0 ? "th" : "td";
+        t += "<tr>" + celdas.map((c) => "<" + tag + ">" + escapeHtml(c.trim()) + "</" + tag + ">").join("") + "</tr>";
+      });
+      t += "</table></div>";
+      html += t;
+      filasTabla = [];
+    }
+
+    lineas.forEach((linea) => {
+      if (linea.includes("\t")) {
+        // Línea de tabla: separo por tabulaciones (juntando tabs consecutivos)
+        filasTabla.push(linea.split(/\t+/));
+      } else {
+        cerrarTabla();
+        if (linea.trim()) {
+          html += "<p style='margin:0 0 8px;'>" + escapeHtml(linea) + "</p>";
+        } else {
+          html += "<div style='height:6px;'></div>";
+        }
+      }
+    });
+    cerrarTabla();
+    return html;
+  }
+
   async function loadNovedades() {
     const content = document.getElementById("novedades-content");
     if (!content) return;
@@ -1230,7 +1275,7 @@
           "</div>" +
           '<p class="novedad-titulo">' + escapeHtml(n.titulo || "(sin título)") + "</p>" +
           '<div class="novedad-cuerpo' + (cuerpoLargo ? " clamp" : "") + '" id="nov-body-' + idx + '">' +
-          escapeHtml(n.cuerpo || "") + "</div>" +
+          formatearCuerpoNovedad(n.cuerpo || "") + "</div>" +
           (cuerpoLargo
             ? '<button class="novedad-vermas" data-idx="' + idx + '">Ver más</button>'
             : "") +
