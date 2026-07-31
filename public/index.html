@@ -162,7 +162,31 @@
       transform: translateX(calc(-50% + 400px)) translateZ(-160px) rotateY(-28deg) scale(0.82);
       z-index: 2; opacity: 0.72;
     }
+    /* Novedades: en desktop no entra al carrusel; queda oculto salvo que se
+       active desde el botón flotante, y ahí cubre el centro al frente. */
+    #panel-novedades {
+      display: none !important;
+      width: 560px;
+      transform: translateX(-50%) translateZ(60px) scale(1);
+      z-index: 10; opacity: 1;
+    }
+    #layout.showing-novedades #panel-novedades { display: flex !important; }
+    /* Botón flotante para abrir/cerrar Novedades en desktop */
+    #novedades-fab {
+      display: flex; align-items: center; gap: 7px;
+      position: fixed; top: 22px; right: 28px; z-index: 20;
+      background: var(--brand); color: white; border: none;
+      border-radius: var(--radius-full); padding: 10px 16px;
+      font-family: var(--font); font-size: 13px; font-weight: 700;
+      cursor: pointer; box-shadow: var(--shadow-md);
+      transition: background 0.18s var(--ease), transform 0.12s var(--ease);
+    }
+    #novedades-fab:hover { background: var(--brand-hover); }
+    #novedades-fab:active { transform: scale(0.96); }
+    #novedades-fab svg { width: 15px; height: 15px; }
   }
+  /* En mobile el FAB no se usa (Novedades está en las pestañas) */
+  #novedades-fab { display: none; }
 
   #header {
     padding: 26px 24px 18px;
@@ -422,6 +446,35 @@
   .manuales-intro { padding: 2px 2px 16px; }
   .manuales-intro h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .manuales-intro p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
+
+  .novedad-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 15px;
+    margin-bottom: 11px;
+    background: var(--surface-0);
+    transition: border-color 0.18s var(--ease), transform 0.12s var(--ease);
+  }
+  .novedad-card:hover { border-color: var(--brand); transform: translateY(-1px); }
+  .novedad-card.destacada { border-left: 3px solid var(--brand); background: var(--brand-soft); }
+  .novedad-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .novedad-cat {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--brand); background: var(--brand-soft); padding: 3px 9px; border-radius: var(--radius-full);
+  }
+  .novedad-fecha { font-size: 11px; color: var(--ink-500); white-space: nowrap; }
+  .novedad-titulo { font-size: 14px; font-weight: 700; margin: 0 0 5px; line-height: 1.35; }
+  .novedad-cuerpo { font-size: 13px; color: var(--ink-700); line-height: 1.5; white-space: pre-wrap; }
+  .novedad-cuerpo.clamp { max-height: 84px; overflow: hidden; position: relative; }
+  .novedad-cuerpo.clamp::after {
+    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 32px;
+    background: linear-gradient(transparent, var(--surface-0));
+  }
+  .novedad-vermas {
+    font-size: 12px; font-weight: 700; color: var(--brand); cursor: pointer;
+    margin-top: 6px; display: inline-block; background: none; border: none; padding: 0;
+    font-family: var(--font);
+  }
 
   .doc-card {
     display: flex;
@@ -800,7 +853,16 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     Manuales
   </button>
+  <button class="tab-btn" data-tab="novedades">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+    Novedades
+  </button>
 </div>
+
+<button id="novedades-fab">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+  <span id="novedades-fab-label">Novedades</span>
+</button>
 
 <div id="layout">
 
@@ -896,6 +958,23 @@
     </div>
   </div>
 
+  <!-- ============ PANEL: NOVEDADES ============ -->
+  <div class="panel" id="panel-novedades">
+    <div class="panel-header">
+      <div class="header-titles">
+        <p class="eyebrow">📢 Novedades</p>
+        <h2>Novedades de Tiendas Full</h2>
+      </div>
+      <button class="center-hint" data-center-target="novedades">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        Centrar
+      </button>
+    </div>
+    <div class="panel-body">
+      <div id="novedades-content"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Host para modales del foro (nueva publicacion, confirmaciones, perfil de autor) -->
@@ -931,6 +1010,14 @@
       document.querySelectorAll(".panel").forEach((v) => v.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      // En desktop, Novedades se muestra superpuesto sobre el carrusel 3D;
+      // el resto usa el carrusel normal. Alternamos una clase en el layout.
+      const layout = document.getElementById("layout");
+      if (btn.dataset.tab === "novedades") {
+        layout.classList.add("showing-novedades");
+      } else {
+        layout.classList.remove("showing-novedades");
+      }
     });
   });
 
@@ -941,6 +1028,24 @@
   // y se anima cada slot (escala, rotacion, profundidad), asi que
   // ac\u00e1 solo hace falta reasignar que panel ocupa cada slot.
   // ============================================================
+  // Botón flotante de Novedades (solo visible en desktop): abre y cierra
+  // el panel de Novedades superpuesto sobre el carrusel.
+  const novFab = document.getElementById("novedades-fab");
+  const novFabLabel = document.getElementById("novedades-fab-label");
+  if (novFab) {
+    novFab.addEventListener("click", () => {
+      const layout = document.getElementById("layout");
+      const abierto = layout.classList.toggle("showing-novedades");
+      novFabLabel.textContent = abierto ? "Cerrar" : "Novedades";
+      if (abierto) {
+        document.getElementById("panel-novedades").classList.add("active");
+        loadNovedades(); // refresca al abrir
+      } else {
+        document.getElementById("panel-novedades").classList.remove("active");
+      }
+    });
+  }
+
   const PANEL_KEYS = ["foro", "chat", "manuales"];
   let slots = { foro: "left", chat: "center", manuales: "right" };
   let centerKey = "chat";
@@ -1046,6 +1151,92 @@
         icon("download") + ' Abrir carpeta de Renders</a>' +
         '<p style="font-size:11.5px;color:var(--ink-500);text-align:center;margin-top:10px;">Se abre en Google Drive, en una pestaña nueva.</p>';
     }, 350);
+  }
+
+  // ============================================================
+  // NOVEDADES (tablón que se llena solo desde n8n → Supabase)
+  // Esta sección solo LEE la tabla 'novedades' y la muestra.
+  // No usa el bot ni la IA. Las novedades las escribe n8n
+  // automáticamente cuando llega un mail.
+  // ============================================================
+  let novedadesLoaded = false;
+  function fmtFechaNovedad(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+    } catch (e) {
+      return "";
+    }
+  }
+
+  async function loadNovedades() {
+    const content = document.getElementById("novedades-content");
+    if (!content) return;
+
+    // Skeleton de carga
+    content.innerHTML = Array(3).fill(
+      '<div class="skeleton-card" style="display:block;padding:14px;">' +
+      '<div class="skeleton-box skeleton-line w35" style="margin-bottom:8px;"></div>' +
+      '<div class="skeleton-box skeleton-line w60" style="margin-bottom:8px;"></div>' +
+      '<div class="skeleton-box skeleton-line" style="width:90%;"></div></div>'
+    ).join("");
+
+    if (!supabaseClient) {
+      content.innerHTML = '<div class="empty-state">' + icon("book-x") +
+        "<p>No se pudo conectar con las novedades.</p></div>";
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient
+        .from("novedades")
+        .select("*")
+        .order("fecha_recibido", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        content.innerHTML = '<div class="empty-state">' + icon("book-x") +
+          "<p>Todavía no hay novedades cargadas.<br/>Van a aparecer acá automáticamente.</p></div>";
+        return;
+      }
+
+      content.innerHTML = data.map((n, idx) => {
+        const cuerpoLargo = (n.cuerpo || "").length > 220;
+        return (
+          '<div class="novedad-card' + (n.destacada ? " destacada" : "") + '">' +
+          '<div class="novedad-top">' +
+          '<span class="novedad-cat">' + escapeHtml(n.categoria || "General") + "</span>" +
+          '<span class="novedad-fecha">' + fmtFechaNovedad(n.fecha_recibido) + "</span>" +
+          "</div>" +
+          '<p class="novedad-titulo">' + escapeHtml(n.titulo || "(sin título)") + "</p>" +
+          '<div class="novedad-cuerpo' + (cuerpoLargo ? " clamp" : "") + '" id="nov-body-' + idx + '">' +
+          escapeHtml(n.cuerpo || "") + "</div>" +
+          (cuerpoLargo
+            ? '<button class="novedad-vermas" data-idx="' + idx + '">Ver más</button>'
+            : "") +
+          "</div>"
+        );
+      }).join("");
+
+      // Botones "Ver más" para expandir el cuerpo completo
+      content.querySelectorAll(".novedad-vermas").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const body = document.getElementById("nov-body-" + btn.dataset.idx);
+          if (body.classList.contains("clamp")) {
+            body.classList.remove("clamp");
+            btn.textContent = "Ver menos";
+          } else {
+            body.classList.add("clamp");
+            btn.textContent = "Ver más";
+          }
+        });
+      });
+    } catch (e) {
+      content.innerHTML = '<div class="empty-state">' + icon("book-x") +
+        "<p>No se pudieron cargar las novedades en este momento.</p></div>";
+    }
   }
 
 
@@ -1970,6 +2161,7 @@
   addBubble("bot", "Hola, soy el asistente de Tiendas Full de ACA, entrenado con el Manual Full completo. Preguntame lo que necesites.");
   loadManuales();
   initForum();
+  loadNovedades();
 </script>
 
 </body>
