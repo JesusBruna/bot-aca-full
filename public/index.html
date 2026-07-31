@@ -1201,13 +1201,26 @@
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
+      // Filtro de vigencia: solo mostramos las novedades que hoy están dentro
+      // de su ventana. Si fecha_inicio está vacía, vale desde siempre; si
+      // fecha_fin está vacía, no vence nunca. Pasada la fecha_fin, la novedad
+      // se oculta sola (no se borra de la base, solo deja de mostrarse).
+      const hoy = new Date().toISOString().slice(0, 10); // AAAA-MM-DD
+      const vigentes = (data || []).filter((n) => {
+        const desde = n.fecha_inicio || null;
+        const hasta = n.fecha_fin || null;
+        if (desde && hoy < desde) return false; // todavía no arrancó
+        if (hasta && hoy > hasta) return false; // ya venció
+        return true;
+      });
+
+      if (vigentes.length === 0) {
         content.innerHTML = '<div class="empty-state">' + icon("book-x") +
           "<p>Todavía no hay novedades cargadas.<br/>Van a aparecer acá automáticamente.</p></div>";
         return;
       }
 
-      content.innerHTML = data.map((n, idx) => {
+      content.innerHTML = vigentes.map((n, idx) => {
         const cuerpoLargo = (n.cuerpo || "").length > 220;
         return (
           '<div class="novedad-card' + (n.destacada ? " destacada" : "") + '">' +
@@ -1269,6 +1282,13 @@
       "</select>" +
       '<label class="field-label" style="margin-top:12px;">Texto de la novedad</label>' +
       '<textarea class="field" id="nov-cuerpo" placeholder="Escribí acá el contenido de la novedad..." style="min-height:120px;"></textarea>' +
+      '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<div style="flex:1;"><label class="field-label">Desde (opcional)</label>' +
+      '<input class="field" id="nov-fecha-inicio" type="date" /></div>' +
+      '<div style="flex:1;"><label class="field-label">Hasta (opcional)</label>' +
+      '<input class="field" id="nov-fecha-fin" type="date" /></div>' +
+      "</div>" +
+      '<p style="font-size:11px;color:var(--ink-500);margin:6px 0 0;">Si ponés una fecha "Hasta", la novedad se oculta sola cuando vence. Dejala vacía para novedades permanentes.</p>' +
       '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;">' +
       '<input type="checkbox" id="nov-destacada" /> Marcar como destacada (aparece resaltada)</label>' +
       '<div class="modal-actions" style="margin-top:16px;">' +
@@ -1286,6 +1306,8 @@
     const cuerpo = document.getElementById("nov-cuerpo").value.trim();
     const categoria = document.getElementById("nov-categoria").value;
     const destacada = document.getElementById("nov-destacada").checked;
+    const fechaInicio = document.getElementById("nov-fecha-inicio").value || null;
+    const fechaFin = document.getElementById("nov-fecha-fin").value || null;
 
     if (clave !== CLAVE_NOVEDADES) {
       showToast("Clave incorrecta");
@@ -1293,6 +1315,10 @@
     }
     if (!titulo || !cuerpo) {
       showToast("Completá el título y el texto");
+      return;
+    }
+    if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+      showToast("La fecha 'Hasta' no puede ser anterior a 'Desde'");
       return;
     }
     if (!supabaseClient) {
@@ -1307,7 +1333,7 @@
     try {
       const { error } = await supabaseClient
         .from("novedades")
-        .insert([{ titulo, cuerpo, categoria, destacada }]);
+        .insert([{ titulo, cuerpo, categoria, destacada, fecha_inicio: fechaInicio, fecha_fin: fechaFin }]);
       if (error) throw error;
       closeModal();
       showToast("Novedad publicada");
