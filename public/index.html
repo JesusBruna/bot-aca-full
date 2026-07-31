@@ -790,6 +790,9 @@
   .modal-label:first-of-type { margin-top: 0; }
   textarea.field { resize: vertical; min-height: 90px; font-family: var(--font); }
   select.field { font-family: var(--font); cursor: pointer; background: var(--surface-0); }
+  .modal-title { font-size: 16px; font-weight: 800; margin: 0 0 14px; letter-spacing: -0.01em; }
+  .field-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-700); margin-bottom: 5px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
   .modal-confirm-text { font-size: 13.5px; color: var(--ink-700); line-height: 1.5; margin: 0 0 16px; }
   .modal-confirm-actions { display: flex; gap: 8px; }
@@ -958,9 +961,9 @@
         <p class="eyebrow">📢 Novedades</p>
         <h2>Novedades de Tiendas Full</h2>
       </div>
-      <button class="center-hint" data-center-target="novedades">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-        Centrar
+      <button class="center-hint visible" id="btn-cargar-novedad" style="background:var(--brand);color:white;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Cargar novedad
       </button>
     </div>
     <div class="panel-body">
@@ -1230,6 +1233,81 @@
     } catch (e) {
       content.innerHTML = '<div class="empty-state">' + icon("book-x") +
         "<p>No se pudieron cargar las novedades en este momento.</p></div>";
+    }
+  }
+
+  // ============================================================
+  // CARGA DE NOVEDADES (formulario protegido con contraseña)
+  // Permite a quien tenga la clave publicar una novedad sin entrar
+  // a Supabase. La clave es una barrera simple para evitar que
+  // cualquiera publique, no una seguridad fuerte.
+  // ============================================================
+  const CLAVE_NOVEDADES = "tiendasfull2026"; // cambiála por la que quieras
+
+  function abrirFormNovedad() {
+    openModal(
+      '<h3 class="modal-title">Cargar novedad</h3>' +
+      '<label class="field-label">Clave de publicación</label>' +
+      '<input class="field" id="nov-clave" type="password" placeholder="Clave para publicar" />' +
+      '<label class="field-label" style="margin-top:12px;">Título</label>' +
+      '<input class="field" id="nov-titulo" placeholder="Ej: Nueva promo de cafetería" />' +
+      '<label class="field-label" style="margin-top:12px;">Categoría</label>' +
+      '<select class="field" id="nov-categoria">' +
+      '<option value="General">General</option>' +
+      '<option value="Promociones">Promociones</option>' +
+      '<option value="Procedimientos">Procedimientos</option>' +
+      '<option value="Productos">Productos</option>' +
+      '<option value="Urgente">Urgente</option>' +
+      "</select>" +
+      '<label class="field-label" style="margin-top:12px;">Texto de la novedad</label>' +
+      '<textarea class="field" id="nov-cuerpo" placeholder="Escribí acá el contenido de la novedad..." style="min-height:120px;"></textarea>' +
+      '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;">' +
+      '<input type="checkbox" id="nov-destacada" /> Marcar como destacada (aparece resaltada)</label>' +
+      '<div class="modal-actions" style="margin-top:16px;">' +
+      '<button class="chip" onclick="closeModal()">Cancelar</button>' +
+      '<button class="chip primary" id="nov-publicar">Publicar novedad</button>' +
+      "</div>"
+    );
+
+    document.getElementById("nov-publicar").onclick = publicarNovedad;
+  }
+
+  async function publicarNovedad() {
+    const clave = document.getElementById("nov-clave").value;
+    const titulo = document.getElementById("nov-titulo").value.trim();
+    const cuerpo = document.getElementById("nov-cuerpo").value.trim();
+    const categoria = document.getElementById("nov-categoria").value;
+    const destacada = document.getElementById("nov-destacada").checked;
+
+    if (clave !== CLAVE_NOVEDADES) {
+      showToast("Clave incorrecta");
+      return;
+    }
+    if (!titulo || !cuerpo) {
+      showToast("Completá el título y el texto");
+      return;
+    }
+    if (!supabaseClient) {
+      showToast("No hay conexión con la base");
+      return;
+    }
+
+    const btn = document.getElementById("nov-publicar");
+    btn.disabled = true;
+    btn.textContent = "Publicando...";
+
+    try {
+      const { error } = await supabaseClient
+        .from("novedades")
+        .insert([{ titulo, cuerpo, categoria, destacada }]);
+      if (error) throw error;
+      closeModal();
+      showToast("Novedad publicada");
+      loadNovedades();
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = "Publicar novedad";
+      showToast("No se pudo publicar. Revisá la conexión.");
     }
   }
 
@@ -2156,6 +2234,10 @@
   loadManuales();
   initForum();
   loadNovedades();
+
+  // Botón para abrir el formulario de carga de novedades
+  const btnCargarNov = document.getElementById("btn-cargar-novedad");
+  if (btnCargarNov) btnCargarNov.addEventListener("click", abrirFormNovedad);
 </script>
 
 </body>
