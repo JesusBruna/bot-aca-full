@@ -439,9 +439,17 @@
   .manuales-intro h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .manuales-intro p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
 
+  #novedades-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 2px;
+  }
+
   @media (min-width: 1000px) {
     #layout.showing-novedades #novedades-content {
       display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start;
+      overflow-y: auto;
     }
   }
 
