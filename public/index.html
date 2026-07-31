@@ -133,13 +133,17 @@
 
   /* ============ DESKTOP / TABLET ANCHO: carrusel 3D ============ */
   @media (min-width: 1000px) {
-    #tabs { display: none !important; }
+    /* Las pestañas quedan visibles en desktop, pero solo se usan para
+       entrar/salir de Novedades (el carrusel se maneja solo). */
+    #tabs {
+      display: flex !important; max-width: 520px;
+    }
     #layout {
       position: relative;
       height: 82vh; max-height: 800px;
       perspective: 1900px;
     }
-    .panel {
+    .panel:not(#panel-novedades) {
       display: flex !important;
       position: absolute;
       top: 0; left: 50%;
@@ -162,31 +166,19 @@
       transform: translateX(calc(-50% + 400px)) translateZ(-160px) rotateY(-28deg) scale(0.82);
       z-index: 2; opacity: 0.72;
     }
-    /* Novedades: en desktop no entra al carrusel; queda oculto salvo que se
-       active desde el botón flotante, y ahí cubre el centro al frente. */
+    /* Novedades a pantalla completa: ocupa todo el ancho del área central
+       y tapa el carrusel mientras está activa. */
     #panel-novedades {
-      display: none !important;
-      width: 560px;
-      transform: translateX(-50%) translateZ(60px) scale(1);
-      z-index: 10; opacity: 1;
+      display: none;
+      position: absolute; top: 0; left: 0; right: 0;
+      width: 100%; max-width: 820px; margin: 0 auto;
+      height: 100%; max-height: none;
+      z-index: 20;
     }
-    #layout.showing-novedades #panel-novedades { display: flex !important; }
-    /* Botón flotante para abrir/cerrar Novedades en desktop */
-    #novedades-fab {
-      display: flex; align-items: center; gap: 7px;
-      position: fixed; top: 22px; right: 28px; z-index: 20;
-      background: var(--brand); color: white; border: none;
-      border-radius: var(--radius-full); padding: 10px 16px;
-      font-family: var(--font); font-size: 13px; font-weight: 700;
-      cursor: pointer; box-shadow: var(--shadow-md);
-      transition: background 0.18s var(--ease), transform 0.12s var(--ease);
-    }
-    #novedades-fab:hover { background: var(--brand-hover); }
-    #novedades-fab:active { transform: scale(0.96); }
-    #novedades-fab svg { width: 15px; height: 15px; }
+    #layout.showing-novedades #panel-novedades { display: flex; }
+    /* Cuando Novedades está activa, el carrusel de atrás se oculta. */
+    #layout.showing-novedades .panel:not(#panel-novedades) { opacity: 0; pointer-events: none; }
   }
-  /* En mobile el FAB no se usa (Novedades está en las pestañas) */
-  #novedades-fab { display: none; }
 
   #header {
     padding: 26px 24px 18px;
@@ -446,6 +438,12 @@
   .manuales-intro { padding: 2px 2px 16px; }
   .manuales-intro h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .manuales-intro p { font-size: 13px; color: var(--ink-500); margin: 0; line-height: 1.5; }
+
+  @media (min-width: 1000px) {
+    #layout.showing-novedades #novedades-content {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start;
+    }
+  }
 
   .novedad-card {
     border: 1px solid var(--border);
@@ -859,11 +857,6 @@
   </button>
 </div>
 
-<button id="novedades-fab">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
-  <span id="novedades-fab-label">Novedades</span>
-</button>
-
 <div id="layout">
 
   <!-- ============ COLUMNA IZQUIERDA: FORO DE IDEAS Y BUENAS PRACTICAS ============ -->
@@ -1006,17 +999,30 @@
 
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach((v) => v.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
-      // En desktop, Novedades se muestra superpuesto sobre el carrusel 3D;
-      // el resto usa el carrusel normal. Alternamos una clase en el layout.
+      const tab = btn.dataset.tab;
       const layout = document.getElementById("layout");
-      if (btn.dataset.tab === "novedades") {
+
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      if (tab === "novedades") {
+        // Abrir Novedades (tapa el carrusel en desktop; es una pestaña en mobile)
+        document.querySelectorAll(".panel").forEach((v) => v.classList.remove("active"));
+        document.getElementById("panel-novedades").classList.add("active");
         layout.classList.add("showing-novedades");
+        loadNovedades();
       } else {
+        // Cerrar Novedades y mostrar el panel elegido
         layout.classList.remove("showing-novedades");
+        document.getElementById("panel-novedades").classList.remove("active");
+        if (isDesktopLayout()) {
+          // En desktop el carrusel maneja la vista: traemos el panel al centro.
+          centerPanel(tab);
+        } else {
+          // En mobile funciona como pestañas: mostramos solo ese panel.
+          document.querySelectorAll(".panel").forEach((v) => v.classList.remove("active"));
+          document.getElementById("panel-" + tab).classList.add("active");
+        }
       }
     });
   });
@@ -1026,25 +1032,12 @@
   // 3 paneles a la vez): cada panel tiene asignado un "slot"
   // (izquierda / centro / derecha). El CSS ya define como se ve
   // y se anima cada slot (escala, rotacion, profundidad), asi que
-  // ac\u00e1 solo hace falta reasignar que panel ocupa cada slot.
+  // aca solo hace falta reasignar que panel ocupa cada slot.
   // ============================================================
-  // Botón flotante de Novedades (solo visible en desktop): abre y cierra
-  // el panel de Novedades superpuesto sobre el carrusel.
-  const novFab = document.getElementById("novedades-fab");
-  const novFabLabel = document.getElementById("novedades-fab-label");
-  if (novFab) {
-    novFab.addEventListener("click", () => {
-      const layout = document.getElementById("layout");
-      const abierto = layout.classList.toggle("showing-novedades");
-      novFabLabel.textContent = abierto ? "Cerrar" : "Novedades";
-      if (abierto) {
-        document.getElementById("panel-novedades").classList.add("active");
-        loadNovedades(); // refresca al abrir
-      } else {
-        document.getElementById("panel-novedades").classList.remove("active");
-      }
-    });
-  }
+  // Al entrar a la pestaña Novedades, refrescamos su contenido.
+  document.querySelector('.tab-btn[data-tab="novedades"]').addEventListener("click", () => {
+    loadNovedades();
+  });
 
   const PANEL_KEYS = ["foro", "chat", "manuales"];
   let slots = { foro: "left", chat: "center", manuales: "right" };
@@ -1100,6 +1093,7 @@
   let hoverTimer = null;
   document.querySelectorAll(".panel").forEach((panel) => {
     const key = panel.id.replace("panel-", "");
+    if (!PANEL_KEYS.includes(key)) return; // novedades no participa del carrusel
     panel.addEventListener("mouseenter", () => {
       clearTimeout(hoverTimer);
       hoverTimer = setTimeout(() => centerPanel(key), 220);
