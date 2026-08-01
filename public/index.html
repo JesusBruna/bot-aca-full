@@ -466,8 +466,40 @@
 
   @media (min-width: 1000px) {
     #layout.showing-novedades #novedades-content {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-content: start;
       overflow-y: auto;
+      padding: 8px 6px;
+      perspective: 1200px;
+    }
+    /* Tarjetas cuadradas tipo resumen en desktop, con relieve 3D sutil */
+    #layout.showing-novedades .novedad-card {
+      margin-bottom: 0;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+      transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.18s var(--ease);
+      transform-style: preserve-3d;
+    }
+    #layout.showing-novedades .novedad-card:hover {
+      transform: translateY(-6px) rotateX(4deg) rotateY(-3deg) scale(1.03);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+      border-color: var(--brand);
+    }
+    /* En la tarjeta-resumen ocultamos el cuerpo largo: solo título + categoría */
+    #layout.showing-novedades .novedad-card .novedad-cuerpo,
+    #layout.showing-novedades .novedad-card .novedad-vermas { display: none; }
+    #layout.showing-novedades .novedad-card .novedad-titulo {
+      font-size: 16px; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    #layout.showing-novedades .novedad-card .nov-abrir {
+      font-size: 11px; font-weight: 700; color: var(--brand); margin-top: auto; display: block;
     }
   }
 
@@ -481,6 +513,7 @@
   }
   .novedad-card:hover { border-color: var(--brand); transform: translateY(-1px); }
   .novedad-card.destacada { border-left: 3px solid var(--brand); background: var(--brand-soft); }
+  .nov-abrir { display: none; }
   .novedad-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
   .novedad-cat {
     font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
@@ -812,6 +845,13 @@
     box-shadow: var(--shadow-lg);
   }
   @media (min-width: 481px) { .modal-sheet { border-radius: var(--radius-lg); margin: 20px; } }
+  /* Modal ancho para el detalle de novedades (tablas grandes, texto cómodo) */
+  @media (min-width: 481px) {
+    .modal-sheet.modal-novedad { max-width: 780px; padding: 26px 28px; }
+  }
+  .modal-sheet.modal-novedad .nov-tabla { font-size: 12.5px; }
+  .modal-sheet.modal-novedad .nov-tabla th,
+  .modal-sheet.modal-novedad .nov-tabla td { padding: 8px 12px; }
   @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .modal-header h3 { font-size: 15.5px; font-weight: 800; margin: 0; }
@@ -1192,6 +1232,26 @@
   // automáticamente cuando llega un mail.
   // ============================================================
   let novedadesLoaded = false;
+  let novedadesActuales = []; // novedades que se están mostrando (para el modal)
+
+  // Abre el detalle completo de una novedad en un modal (con su tabla si tiene).
+  function abrirDetalleNovedad(n) {
+    const fecha = fmtFechaNovedad(n.fecha_recibido);
+    openModal(
+      '<div class="novedad-top" style="margin-bottom:10px;">' +
+      '<span class="novedad-cat">' + escapeHtml(n.categoria || "General") + "</span>" +
+      '<span class="novedad-fecha">' + fecha + "</span>" +
+      "</div>" +
+      '<h3 class="modal-title" style="margin-bottom:14px;font-size:19px;">' + escapeHtml(n.titulo || "(sin título)") + "</h3>" +
+      '<div class="novedad-cuerpo" style="font-size:14px;line-height:1.6;max-height:65vh;overflow-y:auto;">' +
+      formatearCuerpoNovedad(n.cuerpo || "") + "</div>" +
+      '<div class="modal-actions" style="margin-top:18px;">' +
+      '<button class="chip primary" onclick="closeModal()">Cerrar</button>' +
+      "</div>",
+      "modal-novedad"
+    );
+  }
+
   function fmtFechaNovedad(iso) {
     try {
       const d = new Date(iso);
@@ -1300,6 +1360,7 @@
         return;
       }
 
+      novedadesActuales = lista; // guardo para el modal de detalle
       content.innerHTML = lista.map((n, idx) => {
         const cuerpoLargo = (n.cuerpo || "").length > 220;
         const estado = estadoVigencia(n);
@@ -1310,7 +1371,7 @@
           badge = '<span class="novedad-estado ' + estado + '">' + txt + "</span>";
         }
         return (
-          '<div class="novedad-card' + (n.destacada ? " destacada" : "") + (estado !== "vigente" ? " atenuada" : "") + '">' +
+          '<div class="novedad-card' + (n.destacada ? " destacada" : "") + (estado !== "vigente" ? " atenuada" : "") + '" data-nov-idx="' + idx + '">' +
           '<div class="novedad-top">' +
           '<span class="novedad-cat">' + escapeHtml(n.categoria || "General") + "</span>" +
           '<span class="novedad-fecha">' + badge + fmtFechaNovedad(n.fecha_recibido) + "</span>" +
@@ -1321,13 +1382,15 @@
           (cuerpoLargo
             ? '<button class="novedad-vermas" data-idx="' + idx + '">Ver más</button>'
             : "") +
+          '<span class="nov-abrir">Ver detalle →</span>' +
           "</div>"
         );
       }).join("");
 
-      // Botones "Ver más" para expandir el cuerpo completo
+      // Botones "Ver más" para expandir el cuerpo completo (vista mobile/lista)
       content.querySelectorAll(".novedad-vermas").forEach((btn) => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation(); // no abrir el modal al expandir en línea
           const body = document.getElementById("nov-body-" + btn.dataset.idx);
           if (body.classList.contains("clamp")) {
             body.classList.remove("clamp");
@@ -1336,6 +1399,17 @@
             body.classList.add("clamp");
             btn.textContent = "Ver más";
           }
+        });
+      });
+
+      // Clic en la tarjeta abre el detalle completo en un modal, solo en
+      // desktop (donde la tarjeta es un cuadrado resumen). En mobile la
+      // tarjeta ya muestra el contenido en línea, así que no abre nada.
+      content.querySelectorAll(".novedad-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          if (!isDesktopLayout()) return;
+          const n = novedadesActuales[card.dataset.novIdx];
+          if (n) abrirDetalleNovedad(n);
         });
       });
     } catch (e) {
@@ -1619,9 +1693,10 @@
   function closeModal() {
     document.getElementById("forum-modal-host").innerHTML = "";
   }
-  function openModal(innerHTML) {
+  function openModal(innerHTML, extraClass) {
     document.getElementById("forum-modal-host").innerHTML =
-      '<div class="modal-overlay" id="modal-overlay-el"><div class="modal-sheet">' + innerHTML + "</div></div>";
+      '<div class="modal-overlay" id="modal-overlay-el"><div class="modal-sheet' +
+      (extraClass ? " " + extraClass : "") + '">' + innerHTML + "</div></div>";
     document.getElementById("modal-overlay-el").addEventListener("click", (e) => {
       if (e.target.id === "modal-overlay-el") closeModal();
     });
