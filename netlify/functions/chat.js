@@ -104,10 +104,12 @@ function buildSystemPrompt(chunks, novedades) {
     const novTexto = novedades
       .map((n) => {
         const fecha = n.fecha_recibido ? new Date(n.fecha_recibido).toLocaleDateString("es-AR") : "";
-        return `[Novedad${fecha ? " del " + fecha : ""}${n.categoria ? " - " + n.categoria : ""}] ${n.titulo}: ${n.cuerpo}`;
+        const vigencia = n.fecha_fin ? ` (vigente hasta ${n.fecha_fin})` : "";
+        return `[Novedad${fecha ? " del " + fecha : ""}${n.categoria ? " - " + n.categoria : ""}${vigencia}] ${n.titulo}: ${n.cuerpo}`;
       })
       .join("\n\n---\n\n");
     prompt +=
+      `\n\nHoy es ${new Date().toISOString().slice(0, 10)}.` +
       "\n\nNOVEDADES RECIENTES (informacion actualizada, tiene PRIORIDAD sobre el manual " +
       "si algun dato cambio, como precios o promociones). Cuando respondas usando una " +
       "novedad, aclaralo brevemente (ej. 'segun una novedad reciente...'):\n\n" +
@@ -188,16 +190,34 @@ async function getCachedAnswer(normalized) {
   }
 }
 
+// Elige las novedades que mas se relacionan con la pregunta (mismo criterio de
+// palabras clave que el manual). Ahora que las novedades se cargan solas desde
+// los mails, son muchas: mandarlas todas haria cada respuesta lenta y cara.
+// A igual puntaje gana la mas reciente (la lista ya viene ordenada asi).
+function pickRelevantNovedades(novedades, query, k = 8) {
+  const words = tokenize(query || "");
+  if (novedades.length <= k || words.length === 0) return novedades.slice(0, k);
+  const scored = novedades.map((n, i) => {
+    // El titulo cuenta doble: suele nombrar el producto o la promo.
+    const text = normalize(`${n.titulo} ${n.titulo} ${n.cuerpo}`);
+    let score = 0;
+    for (const w of words) if (text.includes(w)) score += 1;
+    return { n, i, score };
+  });
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  return scored.slice(0, k).map((s) => s.n);
+}
+
 // Trae las novedades cargadas en la pantalla (tabla 'novedades') para que el
-// bot tambien pueda responder sobre ellas. Se traen las mas recientes; el
-// modelo elige cual es relevante para la pregunta. Como pueden cambiar datos
-// del manual (precios, promos), las novedades tienen PRIORIDAD sobre el
+// bot tambien pueda responder sobre ellas. Se traen las mas recientes y se
+// pasan al modelo solo las relevantes para la pregunta. Como pueden cambiar
+// datos del manual (precios, promos), las novedades tienen PRIORIDAD sobre el
 // manual cuando hay contradiccion (eso se aclara en las instrucciones).
-async function getNovedades() {
+async function getNovedades(query) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/novedades?select=titulo,cuerpo,categoria,fecha_recibido,fecha_inicio,fecha_fin&order=fecha_recibido.desc&limit=25`,
+      `${SUPABASE_URL}/rest/v1/novedades?select=titulo,cuerpo,categoria,fecha_recibido,fecha_inicio,fecha_fin&order=fecha_recibido.desc&limit=80`,
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     );
     if (!res.ok) return [];
@@ -206,11 +226,12 @@ async function getNovedades() {
     // vencida (paso su fecha_fin) o futura (todavia no llego su fecha_inicio)
     // no se le pasa al modelo, asi no responde sobre promos que no aplican.
     const hoy = new Date().toISOString().slice(0, 10);
-    return rows.filter((n) => {
+    const vigentes = rows.filter((n) => {
       if (n.fecha_inicio && hoy < n.fecha_inicio) return false;
       if (n.fecha_fin && hoy > n.fecha_fin) return false;
       return true;
     });
+    return pickRelevantNovedades(vigentes, query);
   } catch (e) {
     console.error("Error leyendo novedades:", e.message);
     return [];
@@ -300,7 +321,7 @@ exports.handler = async function (event) {
   }
 
   const topChunks = getTopChunks(lastUserMessage ? lastUserMessage.content : "", 4);
-  const novedades = await getNovedades();
+  const novedades = await getNovedades(lastUserMessage ? lastUserMessage.content : "");
   const systemPrompt = buildSystemPrompt(topChunks, novedades);
 
   // Solo mandamos los ultimos 2 mensajes (la pregunta actual + la respuesta
@@ -318,7 +339,7 @@ exports.handler = async function (event) {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 250,
+        max_tokens: 600,
         system: systemPrompt,
         messages: trimmedMessages,
       }),
